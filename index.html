@@ -151,6 +151,9 @@ body.fp .tray,body.fp .top,body.fp .benchbar{display:none!important}
 .bp{position:fixed;z-index:8;top:calc(env(safe-area-inset-top,0px) + 60px);left:max(16px,env(safe-area-inset-left,0px));width:min(330px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(29,39,51,.16);padding:12px;display:flex;flex-direction:column;gap:8px}
 .pp[hidden]{display:none}
 .pp{position:fixed;z-index:8;top:calc(env(safe-area-inset-top,0px) + 200px);max-height:calc(100vh - 330px);min-height:0;overflow:auto;right:max(16px,env(safe-area-inset-right,0px));width:min(320px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(29,39,51,.16);padding:12px;display:flex;flex-direction:column;gap:9px}
+.tp-tools button{display:inline-flex;align-items:center;gap:5px}
+.tp-tools i{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.18);display:inline-block}
+.tp-hint{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
 .pp-presets{display:flex;flex-wrap:wrap;gap:5px}
 .pp-presets button,.pp-seg button{height:30px;border-radius:999px;border:1.5px solid var(--line);background:#fff;font-size:12px;font-weight:700;padding:0 10px;cursor:pointer}
 .pp-seg{display:flex;gap:4px;flex-wrap:wrap}
@@ -178,6 +181,9 @@ body.fp .tray,body.fp .top,body.fp .benchbar{display:none!important}
 .bp-acts button{flex:1;height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;cursor:pointer}
 .bp-acts button:disabled{opacity:.4;cursor:default}
 body.bp-on .hint{display:none}
+body.night .brand h1{color:#f4f1e8}
+body.night .hint{color:#b7c2d8}
+body.night #btnNight{background:#1d2733;color:#ffe9a0;border-color:#1d2733}
 body.fp .bp{display:none!important}
 @media (max-width:640px){.gal{grid-template-columns:1fr}.bp{top:calc(env(safe-area-inset-top,0px) + 96px)}}
 .dragimg{position:fixed;left:0;top:0;width:60px;height:60px;pointer-events:none;z-index:30;filter:drop-shadow(0 6px 10px rgba(29,39,51,.3))}
@@ -216,6 +222,7 @@ body.fp .bp{display:none!important}
     <button class="chip" id="btnSaves" title="작품 저장·불러오기">보관함</button>
     <button class="chip" id="btnGal" title="예시 작품과 따라 만드는 설계도">예시·설계도</button>
     <button class="chip" id="btnCut" aria-pressed="false" title="위쪽을 숨겨 속 들여다보기">단면</button>
+    <button class="chip" id="btnNight" aria-pressed="false" title="낮·밤 바꾸기 (N)">☀ 낮</button>
     <button class="chip" id="btnFP" aria-pressed="false" title="피규어·자동차 시점 (P)">1인칭</button>
     <button class="chip" id="btnBoard" title="기본 판 크기 바꾸기">판 <b id="boardLabel">48×48</b></button>
     <button class="chip" id="btnUndo" title="되돌리기 (Ctrl+Z)">↶ 되돌리기</button>
@@ -244,6 +251,7 @@ body.fp .bp{display:none!important}
           <button class="tool" id="btnMove" aria-pressed="false">옮기기<kbd>M</kbd></button>
           <button class="tool" id="btnErase" aria-pressed="false">빼기<kbd>X</kbd></button>
           <button class="tool" id="btnPose" aria-pressed="false" title="피규어 팔·다리 자세와 무기">포즈<kbd>O</kbd></button>
+          <button class="tool" id="btnTerr" aria-pressed="false" title="언덕·물·길을 넓게 깔기, 영역 지우기">지형<kbd>T</kbd></button>
           <button class="tool" id="btnBench" aria-pressed="false" title="공중 조립판">조립판<kbd>B</kbd></button>
           <button class="tool spin" id="btnSpin" aria-pressed="false">▶ 돌리기<kbd>G</kbd></button>
           <button class="tool" id="btnSpeed" title="기어와 자동차 속도">속도 1×<kbd>V</kbd></button>
@@ -258,11 +266,19 @@ body.fp .bp{display:none!important}
   <button id="fpExit">나가기 <kbd>Esc</kbd></button>
 </div>
 <div class="fpdot" aria-hidden="true"></div>
+<div class="pp tp" id="tp" hidden>
+  <div class="bp-head"><b>지형 · 넓게 채우기</b><button id="tpClose" class="xbtn" aria-label="지형 닫기">✕</button></div>
+  <div class="pp-seg tp-tools" id="tpTools"></div>
+  <label class="pp-row" id="tpHRow"><span>높이</span><input type="range" id="tpH" min="1" max="12" step="1"><output id="tpHv"></output></label>
+  <p class="tp-hint" id="tpHint">판에서 두 곳을 눌러 네모 영역을 정해요</p>
+  <div class="bp-acts"><button id="tpCancel">영역 다시 정하기</button></div>
+</div>
 <div class="pp" id="pp" hidden>
   <div class="bp-head"><b id="ppTitle">포즈</b><button id="ppClose" class="xbtn" aria-label="포즈 닫기">✕</button></div>
   <div class="pp-presets" id="ppPresets"></div>
   <label class="pp-row"><span>왼팔</span><input type="range" id="ppL" min="-60" max="180" step="15"><output id="ppLv"></output></label>
   <label class="pp-row"><span>오른팔</span><input type="range" id="ppR" min="-60" max="180" step="15"><output id="ppRv"></output></label>
+  <label class="pp-row"><span>머리</span><input type="range" id="ppH" min="-90" max="90" step="15"><output id="ppHv"></output></label>
   <div class="pp-row"><span>다리</span><div class="pp-seg" id="ppLegs"></div></div>
   <div class="pp-hands">
     <label><span>왼손</span><select id="ppLi"></select></label>
@@ -344,7 +360,7 @@ body.fp .bp{display:none!important}
 // ---- 규격: 스터드 간격 1, 플레이트 높이 0.4, 브릭 = 플레이트 3장 (실제 레고 8mm : 3.2mm : 9.6mm 비율)
 const PH = 0.4, G = 0.025, MAXH = 240;
 const BOARD_SIZES = [32, 48, 64, 96, 128, 192];
-const CATS = [['brick','브릭'],['plate','플레이트'],['tile','타일'],['slope','경사'],['round','원형'],['build','건축'],['side','옆붙임'],['nature','자연'],['figure','피규어'],['technic','테크닉']];
+const CATS = [['brick','브릭'],['plate','플레이트'],['tile','타일'],['slope','경사'],['round','원형'],['build','건축'],['side','옆붙임'],['nature','자연'],['figure','피규어'],['battle','전투'],['technic','테크닉']];
 const TYPES = [];
 const def = (cat, kind, w, d, h, name, extra) => TYPES.push(Object.assign({id: TYPES.length, cat, kind, w, d, h, name}, extra));
 for (const [w,d] of [[1,1],[1,2],[1,3],[1,4],[1,6],[1,8],[2,2],[2,3],[2,4],[2,6],[2,8]]) def('brick','brick',w,d,3,w+'×'+d);
@@ -379,6 +395,10 @@ def('figure','minifig',2,1,12,'우주인',{multi:true,v:'helmet'}); def('figure'
 def('figure','minifig',2,1,12,'군인',{multi:true,v:'soldier'}); def('figure','minifig',2,1,12,'닌자',{multi:true,v:'ninja'});
 def('figure','minifig',2,1,12,'사무라이',{multi:true,v:'samurai'}); def('figure','minifig',2,1,12,'해적',{multi:true,v:'pirate'});
 def('figure','minifig',2,1,12,'바이킹',{multi:true,v:'viking'});
+def('battle','horse',2,5,8,'말',{multi:true}); def('battle','cannon',2,4,4,'대포',{multi:true});
+def('battle','flag',1,1,15,'깃발',{multi:true}); def('battle','tent',4,6,10,'천막',{multi:true});
+def('battle','barricade',4,1,3,'바리케이드',{multi:true}); def('battle','sandbag',4,1,3,'모래주머니',{multi:true});
+def('battle','campfire',2,2,2,'모닥불',{multi:true}); def('battle','lamp',1,1,18,'가로등',{multi:true});
 for (const n of [2,4,6,8]) def('technic','tbrick',1,n,3,'테크닉 1×'+n);
 for (const n of [3,5,7,9,11,15]) def('technic','beam',1,n,2,'빔 1×'+n);
 for (const n of [4,6,8]) def('technic','axle',1,n,2,'축 '+n);
@@ -431,7 +451,8 @@ controls.maxPolarAngle = Math.PI * 0.49;
 controls.minDistance = 4;
 controls.mouseButtons = {LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN};
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8aa2b4, 0.7));
+const hemi = new THREE.HemisphereLight(0xffffff, 0x8aa2b4, 0.7);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.85);
 sun.castShadow = true;
 sun.shadow.bias = -0.0004;
@@ -728,18 +749,18 @@ const vcMats = {};
 const vcMat = hl => vcMats[hl || ''] || (vcMats[hl || ''] = new THREE.MeshStandardMaterial(Object.assign({vertexColors: true, roughness: 0.35}, hl ? {emissive: HL[hl], emissiveIntensity: 0.45} : {})));
 // ---- 피규어 자세: 팔 각도(도, 0=내림·90=앞으로·180=위로), 다리, 양손에 든 것
 const POSE_DEF = {
-  base: {l: 0, r: 0, legs: 'stand', li: '', ri: ''},
+  base: {l: 0, r: 0, legs: 'stand', li: '', ri: '', h: 0},
   soldier: {l: 75, r: 90, ri: 'gun'}, ninja: {l: 15, r: 120, ri: 'katana', legs: 'run'}, samurai: {l: 60, r: 135, ri: 'katana', legs: 'walk'},
   knight: {l: 30, r: 90, ri: 'sword', li: 'shield'}, pirate: {r: 75, ri: 'sword'}, viking: {l: 45, r: 150, ri: 'axe', li: 'shield'}
 };
 const ITEMS = [['', '빈손'], ['sword', '칼'], ['katana', '일본도'], ['spear', '창'], ['axe', '도끼'], ['gun', '소총'], ['pistol', '권총'], ['bow', '활'], ['shield', '방패'], ['torch', '횃불']];
-const LEGS = [['stand', '서기'], ['walk', '걷기'], ['run', '달리기'], ['sit', '앉기']];
+const LEGS = [['stand', '서기'], ['walk', '걷기'], ['run', '달리기'], ['kneel', '무릎'], ['sit', '앉기'], ['fallen', '쓰러짐']];
 const figPose = (t, p) => Object.assign({}, POSE_DEF.base, POSE_DEF[t.v] || {}, p || {});
-const poseKey = p => [p.l, p.r, p.legs, p.li, p.ri].join(',');
+const poseKey = p => [p.l, p.r, p.legs, p.li, p.ri, p.h || 0].join(',');
 function cleanPose(p) {
   if (!p || typeof p !== 'object') return undefined;
   const ang = v => Math.max(-60, Math.min(180, Math.round((+v || 0) / 15) * 15)), it = v => ITEMS.some(i => i[0] === v) ? v : '';
-  return {l: ang(p.l), r: ang(p.r), legs: LEGS.some(l => l[0] === p.legs) ? p.legs : 'stand', li: it(p.li), ri: it(p.ri)};
+  return {l: ang(p.l), r: ang(p.r), legs: LEGS.some(l => l[0] === p.legs) ? p.legs : 'stand', li: it(p.li), ri: it(p.ri), h: Math.max(-90, Math.min(90, Math.round((+p.h || 0) / 15) * 15))};
 }
 const geoFor = (t, c, pose) => t.multi ? multiGeo(t, c, pose) : partGeo(t);
 const matFor = (t, c, hl) => t.multi ? vcMat(hl) : (hl ? hlMat(c, hl) : mat(c));
@@ -758,7 +779,7 @@ function mergeColored(P) {
 function multiGeo(t, c, pose) {
   const key = t.id + ':' + c + (t.kind === 'minifig' ? ':' + poseKey(figPose(t, pose)) : '');
   if (geoCache[key]) return geoCache[key];
-  const sel = COLORS[c][1], P = [], add = (g, col) => P.push([g, col]);
+  const sel = COLORS[c][1], P = [], add = (g, col) => P.push([g, col]), LT = [];   // LT: 불빛 위치 [x,y,z,색,세기]
   const YEL = '#f6d01a', BLK = '#1b2a34', GRN = '#237841', BRN = '#583927', GRY = '#a0a5a9', WHT = '#f4f4f4';
   const cyl = (rt, rb, h, x, y, z, col, seg = 24) => { const g = new THREE.CylinderGeometry(rt, rb, h, seg); g.translate(x, y + h / 2, z); add(g, col); };
   const bx = (w, h, d, x, y, z, col) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y + h / 2, z); add(g, col); };
@@ -773,7 +794,7 @@ function multiGeo(t, c, pose) {
     const C = (rt, rb, h, x, y, z, seg = 14) => { const g = new THREE.CylinderGeometry(rt, rb, h, seg); g.translate(x, y, z); return g; };
     const Cz = (rt, rb, h, x, y, z, seg = 14) => { const g = new THREE.CylinderGeometry(rt, rb, h, seg); g.rotateX(Math.PI / 2); g.translate(x, y, z); return g; };
     // 다리 (엉덩이 관절 y=1.4)
-    const legAng = {stand: [0, 0], walk: [0.45, -0.45], run: [0.85, -0.7], sit: [Math.PI / 2, Math.PI / 2]}[p.legs] || [0, 0];
+    const legAng = {stand: [0, 0], walk: [0.45, -0.45], run: [0.85, -0.7], sit: [Math.PI / 2, Math.PI / 2], kneel: [1.1, -0.9], fallen: [0.15, -0.1]}[p.legs] || [0, 0];
     [-0.39, 0.39].forEach((sx, i) => {
       const a = legAng[i];
       const M = new THREE.Matrix4().makeTranslation(sx, 1.4, 0).multiply(new THREE.Matrix4().makeRotationX(-a));
@@ -836,9 +857,11 @@ function multiGeo(t, c, pose) {
         const boss = new THREE.SphereGeometry(0.18, 12, 8); boss.scale(1, 1, 0.6); boss.translate(0, -0.15, 0.37); P2(boss, GRY);
       } else if (item === 'torch') {
         P2(Cz(0.07, 0.06, 0.9, 0, 0, 0.1, 8), WOOD); const fl = new THREE.ConeGeometry(0.16, 0.4, 8); fl.rotateX(Math.PI / 2); fl.translate(0, 0, 0.75); P2(fl, '#f57c00');
+        const lp = new THREE.Vector3(H[0], H[1], H[2] + 0.8).applyMatrix4(M); LT.push([lp.x, lp.y, lp.z, '#ff9a3c', 0.8]);
       }
     }
-    // 머리
+    // 머리 (h: 좌우로 돌린 각도)
+    const headFrom = P.length;
     cyl(0.26, 0.26, 0.12, 0, 3.2, 0, YEL);
     cyl(0.45, 0.45, 0.95, 0, 3.32, 0, YEL, 32);
     cyl(0.28, 0.28, 0.2, 0, 4.27, 0, YEL);
@@ -887,7 +910,92 @@ function multiGeo(t, c, pose) {
       if (v === 'helmet') bx(1.0, 1.0, 0.32, 0, 2.1, -0.56, GRY);
       else { cyl(0, 0.22, 0.3, 0, 4.6, 0, col); bx(0.7, 0.06, 0.04, 0, 3.9, 0.55, BLK); }
     }
-    if (p.legs === 'sit') P.forEach(([g]) => g.translate(0, -1.0, 0));
+    if (p.h) { const hr = new THREE.Matrix4().makeRotationY(p.h * Math.PI / 180); for (let k = headFrom; k < P.length; k++) P[k][0].applyMatrix4(hr); }
+    const fin = new THREE.Matrix4();
+    if (p.legs === 'sit') fin.makeTranslation(0, -1.0, 0);
+    else if (p.legs === 'kneel') fin.makeTranslation(0, -0.6, 0);
+    else if (p.legs === 'fallen') fin.makeTranslation(0, 0.45, 2.3).multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
+    P.forEach(([g]) => g.applyMatrix4(fin));
+    LT.forEach(l => { const v = new THREE.Vector3(l[0], l[1], l[2]).applyMatrix4(fin); l[0] = v.x; l[1] = v.y; l[2] = v.z; });
+  } else if (t.kind === 'cannon') {     // 대포: 바퀴 달린 포가 + 포신(앞 +z)
+    const IRON = '#2f3337', GOLD = '#c9a227';
+    for (const sx of [-0.62, 0.62]) {
+      const ch = new THREE.Shape(); ch.moveTo(-1.9, 0.1); ch.lineTo(0.9, 0.55); ch.lineTo(1.1, 1.35); ch.lineTo(0.2, 1.5); ch.lineTo(-1.9, 0.35); ch.lineTo(-1.9, 0.1);
+      const cg = new THREE.ExtrudeGeometry(ch, {depth: 0.22, bevelEnabled: false}); cg.translate(0, 0, -0.11); cg.rotateY(-Math.PI / 2); cg.translate(sx, 0, 0); add(cg, sel);
+    }
+    bx(1.4, 0.2, 0.5, 0, 0.12, -1.65, sel);
+    const ax = new THREE.CylinderGeometry(0.09, 0.09, 2.3, 10); ax.rotateZ(Math.PI / 2); ax.translate(0, 0.78, 0.45); add(ax, IRON);
+    for (const sx of [-1.02, 1.02]) {
+      const tr = new THREE.TorusGeometry(0.66, 0.09, 8, 24); tr.rotateY(Math.PI / 2); tr.translate(sx, 0.78, 0.45); add(tr, BRN);
+      for (let k = 0; k < 6; k++) { const sp = new THREE.BoxGeometry(0.07, 1.3, 0.09); sp.rotateX(k * Math.PI / 6); sp.translate(sx, 0.78, 0.45); add(sp, BRN); }
+      const hub = new THREE.CylinderGeometry(0.16, 0.16, 0.22, 12); hub.rotateZ(Math.PI / 2); hub.translate(sx, 0.78, 0.45); add(hub, GOLD);
+    }
+    const bar = new THREE.CylinderGeometry(0.27, 0.38, 3.1, 20); bar.rotateX(Math.PI / 2); bar.rotateX(-0.12); bar.translate(0, 1.55, 0.5); add(bar, IRON);
+    for (const z of [-0.7, 0.5, 1.7]) { const rg = new THREE.TorusGeometry(z > 1 ? 0.33 : 0.39, 0.05, 6, 20); rg.rotateX(-0.12); rg.translate(0, 1.55 + z * 0.12, 0.5 + z); add(rg, GOLD); }
+    sph(0.24, 0, 1.73, -1.08, IRON);
+  } else if (t.kind === 'horse') {     // 말: 안장 위(높이 h)에 피규어를 올릴 수 있음
+    const MANE = '#2a1c14', SAD = '#7a3b16';
+    const body = new THREE.CylinderGeometry(0.78, 0.74, 2.9, 20); body.rotateX(Math.PI / 2); body.scale(0.85, 1, 1); body.translate(0, 2.25, -0.1); add(body, sel);
+    sph(0.74, 0, 2.25, 1.25, sel, 1); sph(0.72, 0, 2.25, -1.5, sel, 1);
+    for (const [lx, lz] of [[-0.42, 1.3], [0.42, 1.3], [-0.42, -1.55], [0.42, -1.55]]) {
+      bx(0.36, 1.6, 0.42, lx, 0.2, lz, sel); bx(0.4, 0.22, 0.46, lx, 0, lz + 0.02, '#3b3b3b');
+    }
+    const nk = new THREE.BoxGeometry(0.6, 1.5, 0.7); nk.rotateX(0.55); nk.translate(0, 3.15, 1.85); add(nk, sel);
+    const hd = new THREE.BoxGeometry(0.56, 0.6, 1.15); hd.rotateX(0.45); hd.translate(0, 3.75, 2.45); add(hd, sel);
+    const mn = new THREE.BoxGeometry(0.16, 1.5, 0.3); mn.rotateX(0.55); mn.translate(0, 3.35, 1.55); add(mn, MANE);
+    for (const sx of [-0.18, 0.18]) { const ear = new THREE.ConeGeometry(0.09, 0.3, 6); ear.translate(sx, 4.2, 2.05); add(ear, sel); }
+    sph(0.07, -0.29, 3.88, 2.5, BLK); sph(0.07, 0.29, 3.88, 2.5, BLK);
+    const tl = new THREE.CylinderGeometry(0.12, 0.2, 1.4, 8); tl.rotateX(-0.5); tl.translate(0, 1.85, -2.35); add(tl, MANE);
+    bx(1.3, 0.22, 1.4, 0, 2.98, -0.2, SAD); bx(1.42, 0.08, 1.0, 0, 2.88, -0.2, '#c9a227');
+    for (const sx of [-0.66, 0.66]) bx(0.05, 0.9, 0.12, sx, 2.05, -0.2, BLK);
+  } else if (t.kind === 'flag') {       // 깃발: 깃대 + 펄럭이는 천(+x 쪽)
+    cyl(0.3, 0.34, 0.2, 0, 0, 0, GRY, 16);
+    cyl(0.07, 0.07, 5.8, 0, 0.2, 0, '#8a8f94', 10);
+    sph(0.13, 0, 6.05, 0, '#c9a227');
+    const fg = new THREE.BoxGeometry(1.9, 1.15, 0.04, 14, 1, 1); fg.translate(1.02, 5.35, 0);
+    const pos = fg.attributes.position;
+    for (let i = 0; i < pos.count; i++) { const x = pos.getX(i) - 0.07; pos.setZ(i, pos.getZ(i) + Math.sin(x * 2.6) * 0.14 * x / 1.9); pos.setY(i, pos.getY(i) - x * 0.06); }
+    fg.computeVertexNormals(); add(fg, sel);
+    const st = new THREE.BoxGeometry(1.9, 0.18, 0.05, 14, 1, 1); st.translate(1.02, 5.35, 0);
+    const sp2 = st.attributes.position;
+    for (let i = 0; i < sp2.count; i++) { const x = sp2.getX(i) - 0.07; sp2.setZ(i, sp2.getZ(i) + Math.sin(x * 2.6) * 0.14 * x / 1.9); sp2.setY(i, sp2.getY(i) - x * 0.06); }
+    st.computeVertexNormals(); add(st, WHT);
+  } else if (t.kind === 'barricade') {  // 나무 바리케이드: X자 말뚝 + 가로 통나무 (가로 w)
+    const WD = '#7b4a26', W2 = '#5e3a1e';
+    for (const y of [0.35, 0.85]) { const lg = new THREE.CylinderGeometry(0.11, 0.11, t.w - 0.1, 10); lg.rotateZ(Math.PI / 2); lg.translate(0, y, 0); add(lg, WD); }
+    for (let k = 0; k < t.w / 2 + 1; k++) {
+      const x = -t.w / 2 + 0.3 + k * (t.w - 0.6) / (t.w / 2);
+      for (const s of [-1, 1]) { const p = new THREE.CylinderGeometry(0.06, 0.09, 1.55, 8); p.translate(0, 0.77, 0); p.rotateX(s * 0.55); p.translate(x, 0.02, -s * 0.05); add(p, W2); const tip = new THREE.ConeGeometry(0.06, 0.2, 8); tip.translate(0, 1.64, 0); tip.rotateX(s * 0.55); tip.translate(x, 0.02, -s * 0.05); add(tip, '#d8c39a'); }
+    }
+  } else if (t.kind === 'sandbag') {    // 모래주머니 세 줄
+    const SB = '#c2ab7a', SB2 = '#ad9767';
+    for (let row = 0; row < 3; row++) {
+      const n = t.w - (row % 2 ? 1 : 0), off = row % 2 ? 0.5 : 0;
+      for (let k = 0; k < n; k++) { const g = new THREE.SphereGeometry(0.5, 14, 8); g.scale(1.02, 0.42, 0.85); g.translate(-t.w / 2 + 0.5 + off + k, 0.2 + row * 0.36, row === 2 ? 0.05 : 0); add(g, (k + row) % 2 ? SB : SB2); }
+    }
+  } else if (t.kind === 'tent') {       // 군용 천막: 앞(+z)이 열린 삼각 지붕
+    const H2 = t.h * PH - 0.05, hw = t.w / 2 - 0.05, hd2 = t.d / 2 - 0.05, sl = Math.hypot(hw, H2), ang = Math.atan2(H2, hw);
+    for (const s of [-1, 1]) { const pnl = new THREE.BoxGeometry(sl, 0.06, t.d - 0.1); pnl.rotateZ(-s * ang); pnl.translate(s * hw / 2, H2 / 2, 0); add(pnl, sel); }
+    const back = new THREE.Shape(); back.moveTo(-hw, 0); back.lineTo(hw, 0); back.lineTo(0, H2); back.lineTo(-hw, 0);
+    const bg = new THREE.ExtrudeGeometry(back, {depth: 0.06, bevelEnabled: false}); bg.translate(0, 0, -hd2); add(bg, sel);
+    for (const s of [-1, 1]) { const fl = new THREE.Shape(); fl.moveTo(0, 0); fl.lineTo(s * hw * 0.55, 0); fl.lineTo(0, H2 * 0.95); fl.lineTo(0, 0); const fg = new THREE.ExtrudeGeometry(fl, {depth: 0.05, bevelEnabled: false}); fg.translate(s * hw * 0.42, 0, hd2 - 0.05); add(fg, sel); }
+    for (const z of [-hd2 + 0.1, hd2 - 0.1]) cyl(0.07, 0.07, H2 + 0.25, 0, 0, z, '#5e3a1e', 8);
+    const rp = new THREE.CylinderGeometry(0.06, 0.06, t.d - 0.1, 8); rp.rotateX(Math.PI / 2); rp.translate(0, H2, 0); add(rp, '#5e3a1e');
+    bx(t.w - 0.2, 0.04, t.d - 0.2, 0, 0, 0, '#4a4a3a');
+  } else if (t.kind === 'campfire') {   // 모닥불
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; sph(0.2, Math.cos(a) * 0.75, 0.12, Math.sin(a) * 0.75, k % 2 ? GRY : '#7d8285', 0.7); }
+    for (let k = 0; k < 3; k++) { const lg = new THREE.CylinderGeometry(0.09, 0.1, 1.2, 8); lg.rotateZ(1.2); lg.rotateY(k * Math.PI * 2 / 3); lg.translate(0, 0.32, 0); add(lg, BRN); }
+    const f1 = new THREE.ConeGeometry(0.3, 0.75, 10); f1.translate(0, 0.65, 0); add(f1, '#f57c00');
+    const f2 = new THREE.ConeGeometry(0.17, 0.55, 8); f2.translate(0.07, 0.7, 0.05); add(f2, '#ffd54a');
+    LT.push([0, 0.75, 0, '#ff9a3c', 1]);
+  } else if (t.kind === 'lamp') {       // 가로등
+    cyl(0.3, 0.34, 0.25, 0, 0, 0, BLK, 16);
+    cyl(0.08, 0.1, 6.2, 0, 0.25, 0, BLK, 10);
+    bx(0.5, 0.06, 0.5, 0, 6.42, 0, BLK);
+    const gl = new THREE.CylinderGeometry(0.22, 0.17, 0.5, 6); gl.translate(0, 6.73, 0); add(gl, '#ffe9a0');
+    const cap = new THREE.ConeGeometry(0.34, 0.3, 6); cap.translate(0, 7.13, 0); add(cap, BLK);
+    LT.push([0, 6.73, 0, '#ffd890', 1.25]);
+
   } else if (t.kind === 'flower') {
     cyl(0.38, 0.4, 0.18, 0, 0, 0, GRN); cyl(0.05, 0.05, 0.78, 0, 0.18, 0, GRN);
     sph(0.16, 0.14, 0.45, 0, GRN, 0.35); sph(0.16, -0.14, 0.58, 0, GRN, 0.35);
@@ -921,7 +1029,9 @@ function multiGeo(t, c, pose) {
     const cr = new THREE.ExtrudeGeometry(sh, {depth: 0.05, bevelEnabled: false}); cr.rotateX(-Math.PI / 2); cr.translate(0, H + 0.02, 0); add(cr, '#1b2a34');
     for (const sx of [-0.5, 0.5]) for (const sz of [-0.5, 0.5]) { const ln = new THREE.CylinderGeometry(0.09, 0.09, 0.05, 10); ln.rotateX(Math.PI / 2); ln.translate(sx * 1.2, H * 0.72, sz > 0 ? W / 2 : -W / 2); if (sx > 0) add(ln, '#a5ca18'); }
   }
-  return geoCache[key] = mergeColored(P);
+  const out = mergeColored(P);
+  if (LT.length) out.userData.lights = LT;
+  return geoCache[key] = out;
 }
 
 // ---- 기어: 같은 높이에서 중심 거리 = 피치 반지름 합이면 맞물림, 같은 중심으로 위아래 붙으면 같은 축
@@ -1763,6 +1873,12 @@ let lastPointer = null, shiftHeld = false;
 function updateHover(cx, cy) {
   lastPointer = [cx, cy];
   if (fp) return;
+  if (mode === 'terrain' && !held) {
+    ghost.visible = false; placement = null; setHovered(null);
+    showTerr(terrCell(cx, cy));
+    renderer.domElement.style.cursor = 'crosshair';
+    return;
+  }
   if (mode === 'pose' && !held) {
     ghost.visible = false; placement = null;
     const fig = figAt(cx, cy);
@@ -2000,6 +2116,7 @@ addEventListener('pointerup', e => {
     return;
   }
   if (mode === 'move') return;
+  if (mode === 'terrain') { terrTap(e.clientX, e.clientY); return; }
   if (mode === 'pose') { const fig = figAt(e.clientX, e.clientY); if (fig) openPose(fig); else if (poseEd) closePose(); else toast('자세를 바꿀 피규어를 눌러요'); if (e.pointerType !== 'mouse') setHovered(null); return; }
   shiftHeld = e.shiftKey;
   updateHover(e.clientX, e.clientY);
@@ -2021,6 +2138,7 @@ addEventListener('keydown', e => {
   if (fp) { const k = e.key.toLowerCase(); if (k === 'escape' || k === 'p') exitFP(); else if (k === 'v') cycleSpeed(); return; }
   if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) { startFPPick(); return; }
   if (e.key === 'Escape' && fpPick) { startFPPick(); return; }
+  if (e.key === 'Escape' && mode === 'terrain') { if (terr.a) $('tpCancel').click(); else setMode('build'); return; }
   if (e.key === 'Shift') { shiftHeld = true; if (lastPointer) updateHover(...lastPointer); return; }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -2029,6 +2147,8 @@ addEventListener('keydown', e => {
   else if (k === 'x') setMode(mode === 'erase' ? 'build' : 'erase');
   else if (k === 'm') cycleMove();
   else if (k === 'o') setMode(mode === 'pose' ? 'build' : 'pose');
+  else if (k === 't') setMode(mode === 'terrain' ? 'build' : 'terrain');
+  else if (k === 'n') $('btnNight').click();
   else if (k === 'b') setBench(!benchOn);
   else if (k === 'e' && benchOn) moveBench(1);
   else if (k === 'q' && benchOn) moveBench(-1);
@@ -2137,6 +2257,9 @@ function setMode(m) {
   $('btnMove').setAttribute('aria-pressed', m === 'move');
   $('btnPose').setAttribute('aria-pressed', m === 'pose');
   if (m !== 'pose') closePose();
+  $('btnTerr').setAttribute('aria-pressed', m === 'terrain');
+  $('tp').hidden = m !== 'terrain';
+  if (m === 'terrain') { syncTerrPanel(); ghost.visible = false; } else { terr.a = null; terrBox.visible = false; }
   $('btnMove').firstChild.textContent = m === 'move' ? ({one: '한 개 옮기기', group: '묶음 옮기기', copy: '묶음 복사'})[moveScope] : '옮기기';
   setHovered(null);
   if (lastPointer) updateHover(...lastPointer);
@@ -2148,7 +2271,7 @@ function cycleMove() {
   else if (moveScope === 'group') { moveScope = 'copy'; setMode('move'); toast('묶음 복사: 끌어서 놓으면 똑같은 묶음이 하나 더 생겨요'); }
   else setMode('build');
 }
-function setErase(on) { if (on || mode !== 'build') setMode(on ? 'erase' : 'build'); }
+function setErase(on) { if (on) setMode('erase'); else if (mode === 'erase' || mode === 'move') setMode('build'); }
 let toastTimer = 0;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200); }
 
@@ -2183,6 +2306,7 @@ const PRESETS = [
   $('ppLegs').addEventListener('click', e => { const v = e.target.dataset.v; if (v) upd({legs: v}); });
   $('ppL').addEventListener('input', e => upd({l: +e.target.value}));
   $('ppR').addEventListener('input', e => upd({r: +e.target.value}));
+  $('ppH').addEventListener('input', e => upd({h: +e.target.value}));
   $('ppLi').addEventListener('change', e => upd({li: e.target.value}));
   $('ppRi').addEventListener('change', e => upd({ri: e.target.value}));
   $('ppReset').addEventListener('click', () => { if (poseEd) { applyPose(poseEd.b, undefined); syncPosePanel(); } });
@@ -2195,6 +2319,7 @@ function syncPosePanel() {
   $('ppTitle').textContent = '포즈 · ' + TYPES[b.t].name;
   $('ppL').value = p.l; $('ppR').value = p.r;
   $('ppLv').textContent = p.l + '°'; $('ppRv').textContent = p.r + '°';
+  $('ppH').value = p.h || 0; $('ppHv').textContent = (p.h || 0) + '°';
   $('ppLegs').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === p.legs));
   $('ppLi').value = p.li; $('ppRi').value = p.ri;
 }
@@ -2213,6 +2338,160 @@ function closePose(silent) {
   $('pp').hidden = true;
   if (!silent && poseKey(figPose(TYPES[b.t], from)) !== poseKey(figPose(TYPES[b.t], b.pose))) { history.push({op: 'pose', b, from, to: b.pose}); changed(); }
 }
+// ---- 지형·넓게 채우기: 판에서 두 곳을 눌러 네모 영역을 정하면 언덕·물·길·모래·풀밭을 한꺼번에 깔거나, 영역을 비움
+const TERR_TOOLS = [
+  ['hill', '언덕', 3], ['water', '물', 1], ['road', '길', 13], ['sand', '모래', 9], ['meadow', '풀밭', 3], ['paint', '색 채우기', -1], ['erase', '지우기', -1]
+];
+const terr = {tool: 'hill', H: 4, a: null};
+const pieceType = (kind, a, b) => TYPES.find(t => (kind === 'plate' ? t.cat === 'plate' : kind === 'tile' ? t.kind === 'tile' : t.cat === 'brick') && t.w === a && t.d === b);
+const PIECE_SIZES = {};
+for (const kind of ['plate', 'tile', 'brick']) PIECE_SIZES[kind] = TYPES.filter(t => (kind === 'plate' ? t.cat === 'plate' : kind === 'tile' ? t.kind === 'tile' : t.cat === 'brick'))
+  .map(t => [t.w, t.d]).sort((p, q) => q[0] * q[1] - p[0] * p[1] || q[0] - p[0]);
+// mask(W×D, 1 = 채울 칸)를 큰 조각부터 빈틈없이 덮기 → [i, j, 가로, 세로]
+function greedyTile(mask, W, D, kind) {
+  const out = [], sizes = PIECE_SIZES[kind];
+  const fits = (i, j, sx, sz) => { if (i + sx > W || j + sz > D) return false; for (let b = j; b < j + sz; b++) for (let a = i; a < i + sx; a++) if (!mask[b * W + a]) return false; return true; };
+  for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
+    if (!mask[j * W + i]) continue;
+    for (const [p, q] of sizes) {
+      let hit = null;
+      if (fits(i, j, q, p)) hit = [q, p]; else if (fits(i, j, p, q)) hit = [p, q];
+      if (!hit) continue;
+      for (let b = j; b < j + hit[1]; b++) for (let a = i; a < i + hit[0]; a++) mask[b * W + a] = 0;
+      out.push([i, j, hit[0], hit[1]]);
+      break;
+    }
+  }
+  return out;
+}
+const pieceAt = (kind, x, z, sx, sz, y, c) => { const t = sx <= sz ? pieceType(kind, sx, sz) : pieceType(kind, sz, sx); return {t: t.id, r: sx <= sz ? 0 : 1, x, y, z, c}; };
+// 칸이 이 높이 구간에서 비어 있는지 (free(x, z, y0, y1))
+const cellFree = (x, z, y0, y1) => { const L = colIdx.get(CK(x, z)); return !L || !L.some(o => o.y < y1 && o.y + o.h > y0); };
+// 바닥 덮기: 영역 안 빈 칸에 판/타일 한 장
+function coverPieces(x0, z0, W, D, kind, color, free = cellFree, spice) {
+  const mask = new Uint8Array(W * D);
+  for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) mask[j * W + i] = free(x0 + i, z0 + j, 0, 1) ? 1 : 0;
+  return greedyTile(mask, W, D, kind).map(([i, j, sx, sz], n) => pieceAt(kind, x0 + i, z0 + j, sx, sz, 0, spice && (n * 7919 % 13 === 0) ? spice : color));
+}
+// 언덕: 가운데가 높은 둥근 언덕을 브릭으로 층층이 (윗면은 top 색, 속은 inner 색)
+function hillHeights(W, D, L) {
+  const h = new Uint8Array(W * D);
+  for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
+    const u = (i + 0.5) / W * 2 - 1, v = (j + 0.5) / D * 2 - 1;
+    const d = Math.hypot(u, v) * (1 + 0.08 * Math.sin(i * 0.9 + j * 0.37) + 0.06 * Math.cos(j * 0.8 - i * 0.3));
+    h[j * W + i] = Math.round(L * (Math.cos(Math.PI * Math.min(1, d)) + 1) / 2);
+  }
+  return h;
+}
+function hillPieces(x0, z0, W, D, L, top = 3, inner = 11, free = cellFree, h = hillHeights(W, D, L)) {
+  const out = [];
+  for (let k = 0; k < L; k++) {
+    for (const [isTop, col] of [[true, top], [false, inner]]) {
+      const mask = new Uint8Array(W * D);
+      let any = false;
+      for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) {
+        const hv = h[j * W + i];
+        if (hv > k && (hv === k + 1) === isTop && free(x0 + i, z0 + j, k * 3, k * 3 + 3)) { mask[j * W + i] = 1; any = true; }
+      }
+      if (any) for (const [i, j, sx, sz] of greedyTile(mask, W, D, 'brick')) out.push(pieceAt('brick', x0 + i, z0 + j, sx, sz, k * 3, col));
+    }
+  }
+  return out;
+}
+const terrBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({color: '#2a7bff', transparent: true, opacity: 0.22, depthWrite: false}));
+const terrEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({color: '#2a7bff'}));
+terrBox.add(terrEdge); terrBox.visible = false; terrBox.renderOrder = 3; scene.add(terrBox);
+function terrCell(cx, cy) {
+  const hit = pick(cx, cy);
+  if (!hit) return null;
+  const half = board / 2, n = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : new THREE.Vector3(0, 1, 0);
+  const c = v => Math.max(-half, Math.min(half - 1, Math.floor(v)));
+  return [c(hit.point.x - n.x * 0.01), c(hit.point.z - n.z * 0.01)];
+}
+const terrRect = (a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(a[0] - b[0]) + 1, Math.abs(a[1] - b[1]) + 1];
+function showTerr(cell) {
+  if (!cell) { terrBox.visible = !!terr.a; return; }
+  const [x, z, W, D] = terrRect(terr.a || cell, cell), hh = terr.tool === 'hill' ? terr.H * 3 * PH : terr.tool === 'erase' ? 2 : PH;
+  terrBox.position.set(x + W / 2, hh / 2 + 0.01, z + D / 2); terrBox.scale.set(W + 0.04, hh + 0.02, D + 0.04);
+  terrBox.material.color.set(terr.tool === 'erase' ? '#ff3b1f' : '#2a7bff'); terrEdge.material.color.copy(terrBox.material.color);
+  terrBox.visible = true;
+  $('tpHint').textContent = terr.a ? `${W}×${D} · 반대쪽 모서리를 눌러요` : '판에서 두 곳을 눌러 네모 영역을 정해요';
+}
+function terrTap(cx, cy) {
+  const cell = terrCell(cx, cy);
+  if (!cell) return;
+  if (!terr.a) { terr.a = cell; showTerr(cell); return; }
+  const [x0, z0, W, D] = terrRect(terr.a, cell);
+  terr.a = null;
+  applyTerrain(x0, z0, W, D);
+  showTerr(cell);
+}
+function applyTerrain(x0, z0, W, D) {
+  settle();
+  const tool = terr.tool;
+  if (tool === 'erase') {
+    const list = bricks.filter(b => { const cx = b.x + b.w / 2, cz = b.z + b.d / 2; return cx >= x0 && cx <= x0 + W && cz >= z0 && cz <= z0 + D; });
+    if (!list.length) { toast('지울 블럭이 없어요'); return; }
+    list.forEach(removeBrick);
+    history.push({op: 'clear', list});
+    changed(); toast(`블럭 ${list.length}개를 지웠어요 · 되돌리기로 복구할 수 있어요`);
+    return;
+  }
+  if (tool === 'hill' && (W < 4 || D < 4)) { toast('언덕은 4×4보다 넓게 정해 주세요'); return; }
+  if (tool === 'hill' && W * D > 96 * 96) { toast('언덕은 96×96까지 한 번에 만들 수 있어요'); return; }
+  if (tool === 'hill') { hillOverCover(x0, z0, W, D, Math.min(terr.H, Math.floor(MAXH / 3))); return; }
+  const list = tool === 'water' ? coverPieces(x0, z0, W, D, 'tile', 1, cellFree, 8)
+    : tool === 'road' ? coverPieces(x0, z0, W, D, 'tile', 13)
+    : coverPieces(x0, z0, W, D, 'plate', tool === 'paint' ? (colorIdx === TRANS ? 1 : colorIdx) : tool === 'sand' ? 9 : 3);
+  if (!list.length) { toast('빈 칸이 없어요'); return; }
+  const anim = list.length < 80;
+  list.forEach(b => addBrick(b, anim));
+  history.push({op: 'addmany', list});
+  changed();
+  toast(`${TERR_TOOLS.find(t => t[0] === tool)[1]} · 블럭 ${list.length}개를 놓았어요`);
+}
+// 바닥에 깔린 판·타일(물·길·풀밭) 위에도 언덕을 세울 수 있게: 언덕 밑에 걸친 깔개를 걷고, 언덕 밖으로 남는 칸은 같은 색으로 다시 깔기
+const isCover = o => !o.sn && o.y === 0 && o.h === 1 && (TYPES[o.t].cat === 'plate' || TYPES[o.t].kind === 'tile');
+function hillOverCover(x0, z0, W, D, L) {
+  const h = hillHeights(W, D, L), inHill = (x, z) => x >= x0 && x < x0 + W && z >= z0 && z < z0 + D && h[(z - z0) * W + (x - x0)] > 0;
+  const before = [];
+  for (const o of bricksNear(x0, z0, x0 + W, z0 + D, false)) {
+    if (!isCover(o) || before.includes(o)) continue;
+    let hit = false;
+    for (let x = o.x; x < o.x + o.w && !hit; x++) for (let z = o.z; z < o.z + o.d; z++) if (inHill(x, z)) { hit = true; break; }
+    if (hit) before.push(o);
+  }
+  before.forEach(removeBrick);
+  const after = hillPieces(x0, z0, W, D, L, 3, 11, cellFree, h);
+  after.forEach(b => addBrick(b, false));
+  const groups = new Map();
+  for (const o of before) { const kind = TYPES[o.t].kind === 'tile' ? 'tile' : 'plate', k = kind + ':' + o.c; if (!groups.has(k)) groups.set(k, {kind, c: o.c, cells: []}); for (let x = o.x; x < o.x + o.w; x++) for (let z = o.z; z < o.z + o.d; z++) groups.get(k).cells.push([x, z]); }
+  for (const g of groups.values()) {
+    let gx0 = Infinity, gz0 = Infinity, gx1 = -Infinity, gz1 = -Infinity;
+    for (const [x, z] of g.cells) { gx0 = Math.min(gx0, x); gz0 = Math.min(gz0, z); gx1 = Math.max(gx1, x); gz1 = Math.max(gz1, z); }
+    const set = new Set(g.cells.map(([x, z]) => x + ',' + z));
+    const refill = coverPieces(gx0, gz0, gx1 - gx0 + 1, gz1 - gz0 + 1, g.kind, g.c, (x, z, a, b) => set.has(x + ',' + z) && cellFree(x, z, a, b));
+    refill.forEach(b => addBrick(b, false)); after.push(...refill);
+  }
+  if (!after.length) { before.forEach(b => addBrick(b, false)); toast('빈 칸이 없어요'); return; }
+  history.push(before.length ? {op: 'replace', before, after, boardBefore: board} : {op: 'addmany', list: after});
+  changed();
+  toast(`언덕 · 블럭 ${after.length}개를 놓았어요`);
+}
+(function buildTerrPanel() {
+  $('tpTools').innerHTML = TERR_TOOLS.map(([id, label, c]) => `<button data-v="${id}" aria-pressed="${id === terr.tool}">${c >= 0 ? `<i style="background:${COLORS[c][1]}"></i>` : ''}${label}</button>`).join('');
+  $('tpTools').addEventListener('click', e => { const bt = e.target.closest('button'); if (!bt) return; terr.tool = bt.dataset.v; syncTerrPanel(); if (lastPointer) updateHover(...lastPointer); });
+  $('tpH').addEventListener('input', e => { terr.H = +e.target.value; syncTerrPanel(); if (lastPointer) updateHover(...lastPointer); });
+  $('tpClose').addEventListener('click', () => setMode('build'));
+  $('tpCancel').addEventListener('click', () => { terr.a = null; terrBox.visible = false; showTerr(null); $('tpHint').textContent = '판에서 두 곳을 눌러 네모 영역을 정해요'; });
+})();
+function syncTerrPanel() {
+  $('tpTools').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.v === terr.tool));
+  $('tpHRow').hidden = terr.tool !== 'hill';
+  $('tpH').value = terr.H; $('tpHv').textContent = terr.H + '단';
+}
+$('btnTerr').addEventListener('click', () => setMode(mode === 'terrain' ? 'build' : 'terrain'));
+
 function turnFig() {
   if (!poseEd) return;
   const b = poseEd.b, t = TYPES[b.t];
@@ -2996,6 +3275,64 @@ const MODELS = [
     for (const [x, z, r] of [[22, 6, 2], [25, 6, 2], [20, 20, 0], [27, 20, 0]]) A('figure:기사', x, 1, z, r, x % 2);
     for (const [x, z] of [[12, 1], [36, 1], [1, 24]]) A('figure:기사', x, 28, z, 0, 1);
   }},
+  {id: 'siege', fig: true, name: '성 공방전', lv: '어려움', desc: '강 건너 성채를 에워싼 공격군. 대포와 모래주머니, 언덕 위 궁수, 말 탄 기사, 천막과 모닥불이 있는 진지. 밤으로 바꾸면 횃불과 가로등에 불이 들어와요.', build(A) {
+    const K = o => TYPES[o.t].key, put = list => list.forEach(o => A(K(o), o.x, o.y, o.z, o.r, o.c));
+    // 성채(0..48, 0..48)를 그대로 세우고 성문은 -z 쪽
+    MODELS.find(m => m.id === 'fcastle').build(A);
+    const F = (k, x, y, z, r, c, pose) => A('figure:' + k, x, y, z, r, c, pose);
+    // 성벽 위 수비대 (성문 쪽 성벽길, 바깥을 바라봄)
+    [[15, 'bow'], [18, 'spear'], [21, 'bow'], [26, 'bow'], [29, 'spear'], [32, 'bow']].forEach(([x, w], i) =>
+      F(i % 3 === 1 ? '기사' : '군인', x, 28, 2, 2, i % 3 === 1 ? 12 : 3, w === 'bow' ? {l: 90, r: 60, li: 'bow', ri: ''} : {l: 30, r: 120, ri: 'spear', li: 'shield'}));
+    // 강(해자)과 다리, 길
+    put(coverPieces(-36, -14, 120, 8, 'tile', 1, x => !(x >= 20 && x < 28), 8));
+    put(coverPieces(20, -60, 8, 60, 'tile', 13, () => true));
+    for (const z of [-14, -10]) { A('build:울타리 1×4', 20, 1, z, 1, 11); A('build:울타리 1×4', 27, 1, z, 1, 11); }
+    put(coverPieces(-36, -6, 56, 2, 'plate', 9, () => true)); put(coverPieces(28, -6, 56, 2, 'plate', 9, () => true));     // 강가 모래
+    put(coverPieces(-36, -16, 56, 2, 'plate', 9, () => true)); put(coverPieces(28, -16, 56, 2, 'plate', 9, () => true));
+    // 언덕 둘 (꼭대기에 궁수와 소나무)
+    for (const [hx, hz, W, D, L] of [[-34, -50, 26, 26, 5], [54, -52, 28, 28, 6]]) {
+      const h = hillHeights(W, D, L);
+      put(hillPieces(hx, hz, W, D, L, 3, 11, () => true, h));
+      const at = (i, j) => [hx + i, h[j * W + i] * 3, hz + j];
+      const c = at(W / 2 - 1, D / 2);
+      F('바이킹', c[0], c[1], c[2], 0, 1, {l: 90, r: 60, li: 'bow', ri: ''});
+      F('군인', c[0] + 3, c[1], c[2] - 1, 0, 3, {l: 75, r: 90, ri: 'gun', legs: 'kneel'});
+      F('기사', c[0] - 3, c[1], c[2] + 1, 0, 0, {l: 30, r: 150, ri: 'sword', li: 'shield', h: 30});
+      A('battle:깃발', c[0] + 1, c[1], c[2] - 3, 0, 0);
+      for (const [i, j] of [[5, 7], [W - 7, 8], [6, D - 8]]) { const top = Math.max(h[j * W + i], h[j * W + i + 1], h[(j + 1) * W + i], h[(j + 1) * W + i + 1]); A('nature:소나무', hx + i, top * 3, hz + j, 0, 3); }
+    }
+    // 포병 진지: 대포 넷과 모래주머니, 포수
+    for (const x of [2, 10, 36, 44]) {
+      A('battle:모래주머니', x - 1, 0, -26, 0, 0);
+      A('battle:대포', x, 0, -32, 0, 11);
+      F('군인', x + 2, 0, -34, 0, 3, {l: 45, r: 30, legs: 'kneel', h: -30});
+      F('해적', x - 2, 0, -33, 0, 0, {r: 75, ri: 'torch', l: 0});
+    }
+    // 바리케이드 줄
+    for (const x of [-4, 2, 8, 14, 30, 36, 42, 48]) A('battle:바리케이드', x, 0, -42, 0, 0);
+    // 돌격하는 보병과 쓰러진 병사 (다리 앞 강가)
+    [[6, -20, '바이킹', 1, {l: 45, r: 150, ri: 'axe', li: 'shield', legs: 'run'}], [12, -21, '사무라이', 0, {l: 60, r: 135, ri: 'katana', legs: 'run'}],
+     [16, -19, '닌자', 5, {l: 15, r: 120, ri: 'katana', legs: 'run', h: 30}], [32, -20, '해적', 4, {l: 30, r: 120, ri: 'sword', legs: 'run'}],
+     [36, -22, '바이킹', 0, {l: 60, r: 165, ri: 'axe', legs: 'walk'}], [42, -19, '군인', 3, {l: 75, r: 90, ri: 'gun', legs: 'walk'}]]
+      .forEach(([x, z, k, c, p]) => F(k, x, 0, z, 0, c, p));
+    F('기사', 9, 0, -17, 0, 12, {legs: 'fallen', l: 150, r: 20, ri: 'sword'}); F('군인', 38, 0, -20, 1, 3, {legs: 'fallen', l: 160, r: 160});
+    // 말 탄 기사들 (길 위)
+    for (const [z, c, w] of [[-36, 11, 'spear'], [-46, 4, 'sword'], [-54, 5, 'spear']]) {
+      A('battle:말', 21, 1, z, 0, c); F('기사', 21, 9, z + 2, 0, 12, {legs: 'sit', l: 30, r: w === 'spear' ? 90 : 135, ri: w, li: 'shield'});
+      A('battle:말', 25, 1, z - 2, 0, c === 4 ? 11 : 4); F('기사', 25, 9, z, 0, 0, {legs: 'sit', l: 30, r: 120, ri: 'sword', li: 'shield'});
+    }
+    // 길가 가로등
+    for (const z of [-22, -38, -50]) { A('battle:가로등', 18, 0, z, 0, 0); A('battle:가로등', 29, 0, z, 0, 0); }
+    // 공격군 진지: 천막, 모닥불, 깃발, 둘러앉은 병사
+    for (const [x, z, c] of [[-12, -74, 9], [-4, -74, 3], [34, -74, 9], [42, -74, 3], [50, -74, 9]]) A('battle:천막', x, 0, z, 0, c);
+    for (const [x, z] of [[2, -64], [46, -64]]) {
+      A('battle:모닥불', x, 0, z, 0, 0);
+      F('군인', x - 3, 0, z, 1, 3, {legs: 'sit', l: 30, r: 45, h: 30}); F('바이킹', x + 3, 0, z + 1, 3, 1, {legs: 'sit', l: 45, r: 30});
+      F('해적', x, 0, z - 3, 0, 0, {legs: 'sit', l: 0, r: 75, ri: 'torch'});
+    }
+    for (const x of [-14, 10, 32, 56]) A('battle:깃발', x, 0, -66, 0, 0);
+    F('사무라이', 14, 0, -62, 0, 0, {l: 0, r: 90, ri: 'katana', h: -30}); F('닌자', 16, 0, -70, 0, 5, {l: 15, r: 30, ri: 'torch'});
+  }},
   {id: 'house', name: '미니 2층집', lv: '보통', desc: '창문 일곱 개와 문이 있는 벽돌집. 2층 위에 파란 경사 지붕을 얹어요.', build(A) {
     A(PK(4, 8), 0, 0, 0, 0, 9); A(PK(4, 8), 4, 0, 0, 0, 9);
     const door = (x, z) => z === 0 && (x === 3 || x === 4);
@@ -3250,8 +3587,8 @@ function boardFor(list) {
 }
 function modelBricks(m) {
   const raw = [];
-  m.build((k, x, y, z, r, c) => raw.push({k, x, y, z, r, c}));
-  const list = raw.map(o => { const t = tBySave[o.k]; if (!t) { console.warn('부품 없음', o.k); return null; } return normalize({t: t.id, r: o.r, x: o.x, y: o.y, z: o.z, c: o.c}); }).filter(Boolean);
+  m.build((k, x, y, z, r, c, pose) => raw.push({k, x, y, z, r, c, pose}));
+  const list = raw.map(o => { const t = tBySave[o.k]; if (!t) { console.warn('부품 없음', o.k); return null; } return normalize(Object.assign({t: t.id, r: o.r, x: o.x, y: o.y, z: o.z, c: o.c}, o.pose && t.kind === 'minifig' ? {pose: cleanPose(o.pose)} : {})); }).filter(Boolean);
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   list.forEach(b => { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.w); z0 = Math.min(z0, b.z); z1 = Math.max(z1, b.z + b.d); });
   const ox = -Math.round((x0 + x1) / 2), oz = -Math.round((z0 + z1) / 2);
@@ -3438,6 +3775,68 @@ $('bpAuto').addEventListener('click', () => {
   changed();
 });
 
+// ---- 밤: 어두운 하늘과 달빛, 가로등·모닥불·횃불에 불이 들어옴 (가까운 8개는 실제 빛, 나머지는 빛무리만)
+let night = false, nightT = 0;
+const DAY = {bg: '#cfe3f2', hemi: 0.7, hemiSky: '#ffffff', hemiGnd: '#8aa2b4', sun: 0.85, sunCol: '#ffffff', floor: '#b9d1e3'};
+const NIGHT = {bg: '#0c1530', hemi: 0.3, hemiSky: '#8ea5ff', hemiGnd: '#141c2c', sun: 0.24, sunCol: '#a9b9ff', floor: '#16233a'};
+const NL = 8, nightLights = [];
+const haloTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, 'rgba(255,255,255,.85)'); gr.addColorStop(0.45, 'rgba(255,255,255,.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+const haloGeo = new THREE.BufferGeometry();
+const haloMat = o => new THREE.PointsMaterial(Object.assign({map: haloTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false}, o));
+const halos = new THREE.Points(haloGeo, haloMat({size: 5}));
+const haloCore = new THREE.Points(haloGeo, haloMat({size: 1.1, depthTest: false}));   // 불씨: 등 유리 속에서도 밝게
+halos.add(haloCore);
+halos.frustumCulled = haloCore.frustumCulled = false; halos.visible = false; halos.renderOrder = 4; haloCore.renderOrder = 5;
+scene.add(halos);
+function setNight(on) {
+  night = on;
+  const P = on ? NIGHT : DAY;
+  scene.background.set(P.bg); scene.fog.color.set(P.bg);
+  hemi.intensity = P.hemi; hemi.color.set(P.hemiSky); hemi.groundColor.set(P.hemiGnd);
+  sun.intensity = P.sun; sun.color.set(P.sunCol);
+  floor.material.color.set(P.floor);
+  if (on && !nightLights.length) for (let i = 0; i < NL; i++) { const l = new THREE.PointLight('#ffb060', 0, 18, 2); scene.add(l); nightLights.push(l); }
+  nightLights.forEach(l => { l.visible = on; });
+  halos.visible = on;
+  document.body.classList.toggle('night', on);
+  $('btnNight').setAttribute('aria-pressed', on);
+  $('btnNight').textContent = on ? '☾ 밤' : '☀ 낮';
+  try { localStorage.setItem('brick-gongbang-night', on ? '1' : ''); } catch (e) {}
+  nightT = 0;
+}
+const _lv = new THREE.Vector3();
+function updateNight(now, force) {
+  if (!night || (!force && now - nightT < 250 && !(fp || spinning))) return;
+  nightT = now;
+  const spots = [];
+  for (const b of bricks) {
+    const L = b.mesh && b.mesh.geometry.userData.lights;
+    if (!L || cutHidden(b) || (b.mesh.parent && !b.mesh.visible)) continue;
+    for (const l of L) { _lv.set(l[0], l[1], l[2]).applyMatrix4(b.mesh.matrixWorld); spots.push([_lv.x, _lv.y, _lv.z, l[3], l[4]]); }
+  }
+  const pos = new Float32Array(spots.length * 3), col = new Float32Array(spots.length * 3), cc = new THREE.Color();
+  spots.forEach((s, i) => { pos[i * 3] = s[0]; pos[i * 3 + 1] = s[1]; pos[i * 3 + 2] = s[2]; cc.set(s[3]); col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; });
+  haloGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  haloGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  haloGeo.setDrawRange(0, spots.length);
+  const ref = fp ? camera.position : controls.target;
+  spots.sort((a, b) => ((a[0] - ref.x) ** 2 + (a[2] - ref.z) ** 2) - ((b[0] - ref.x) ** 2 + (b[2] - ref.z) ** 2));
+  nightLights.forEach((l, i) => {
+    const s = spots[i];
+    if (!s) { l.intensity = 0; return; }
+    l.position.set(s[0], s[1] + 0.3, s[2]); l.color.set(s[3]);
+    l.intensity = 1.5 * s[4] * (0.92 + 0.08 * Math.sin(now / 90 + i * 1.7));
+  });
+}
+$('btnNight').addEventListener('click', () => { setNight(!night); updateNight(performance.now(), true); toast(night ? '밤이에요 · 가로등·모닥불·횃불에 불이 들어와요' : '낮이에요'); });
+try { if (localStorage.getItem('brick-gongbang-night')) setNight(true); } catch (e) {}
+
 // ---- 루프
 addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 let lastNow = performance.now();
@@ -3462,6 +3861,7 @@ function frame(now) {
     renderer.render(scene, camera);
     renderer.setScissorTest(false);
   }
+  updateNight(now);
   chunkVis(false);
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
