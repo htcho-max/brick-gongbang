@@ -3289,6 +3289,30 @@ function gableRoofZ(A, x0, z0, W, D, y, c) {
     if (xr - xl > 2) fillRect(A, xl + 2, z0, xr - xl - 2, D, yy, c, 'brick', lv % 2 === 1);
   }
 }
+// 우진각(사방으로 내려오는) 기와지붕: 바깥에서 한 줄씩 안으로 올라가며 경사를 두르고, 마지막은 용마루.
+// W·D는 짝수. D가 4로 나눠 2가 남으면 용마루로 끝남. levels로 몇 줄만 두를 수도 있음(중층 지붕의 아래 지붕)
+function hipRoof(A, x0, z0, W, D, y, c, levels = 99) {
+  const S = 'slope:경사 2×2', R = 'slope:용마루 2×2';
+  for (let lv = 0; lv < levels; lv++) {
+    const xl = x0 + 2 * lv, xr = x0 + W - 2 - 2 * lv, zf = z0 + 2 * lv, zb = z0 + D - 2 - 2 * lv, yy = y + 3 * lv;
+    if (xl > xr || zf > zb) return;
+    if (zf === zb) { for (let x = xl; x <= xr; x += 2) A(R, x, yy, zf, 0, c); return; }
+    if (xl === xr) { for (let z = zf; z <= zb; z += 2) A(R, xl, yy, z, 1, c); return; }
+    for (let x = xl; x <= xr; x += 2) { A(S, x, yy, zf, 0, c); A(S, x, yy, zb, 2, c); }
+    for (let z = zf + 2; z <= zb - 2; z += 2) { A(S, xl, yy, z, 3, c); A(S, xr, yy, z, 1, c); }
+    if (lv + 1 >= levels) return;
+    const W2 = xr - xl - 2, D2 = zb - zf - 2;           // 다음 줄 아래를 받치는 2칸 띠
+    if (W2 <= 0 || D2 <= 0) return;
+    if (D2 <= 2 || W2 <= 2) fillRect(A, xl + 2, zf + 2, W2, D2, yy, c);
+    else { fillRect(A, xl + 2, zf + 2, W2, 2, yy, c); fillRect(A, xl + 2, zb - 2, W2, 2, yy, c); fillRect(A, xl + 2, zf + 4, 2, D2 - 4, yy, c); fillRect(A, xr - 2, zf + 4, 2, D2 - 4, yy, c); }
+  }
+}
+// 판·타일을 큰 조각부터 깔기 (높이 y, free(x,z)가 false인 칸은 비움)
+function slabAt(A, x0, z0, W, D, y, kind, c, free, spice) {
+  const mask = new Uint8Array(W * D);
+  for (let j = 0; j < D; j++) for (let i = 0; i < W; i++) mask[j * W + i] = !free || free(x0 + i, z0 + j) ? 1 : 0;
+  greedyTile(mask, W, D, kind).forEach(([i, j, sx, sz], n) => { const o = pieceAt(kind, x0 + i, z0 + j, sx, sz, y, spice && n % 5 === 2 ? spice : c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); });
+}
 // z 방향 한 줄 벽 (z0..z1 포함)
 function runZ(A, z0, z1, y, x, c, odd) {
   let z = z0, first = true;
@@ -3706,6 +3730,135 @@ const MODELS = [
     // 타는 계단과 줄 선 승객
     A('slope:계단 2×3', -3, 0, 44, 3, 12);
     A('figure:시민', -7, 0, 47, 3, 7, {legs: 'walk', l: 30, r: -30}); A('figure:시민', -10, 0, 48, 3, 8);
+  }},
+  {id: 'fgeunjeong', fig: true, name: '경복궁 근정전', lv: '어려움', desc: '피규어 크기로 지은 근정전 일대. 근정문을 지나 박석 마당과 품계석 사이 어도를 걷고, 두 단 월대 계단을 올라 중층 지붕의 근정전 안 어좌 앞까지 들어가 보세요.', build(A) {
+    const RED = 0, GRN = 3, ROOF = 13, ST = 4, PV = 12, PATH = 9, WHT = 4;
+    const S = 'slope:경사 2×2', RG = 'slope:용마루 2×2';
+    // 바깥 길, 근정문 바닥, 박석 마당과 어도
+    const inWoldae = (x, z) => x >= 18 && x < 82 && z >= 46 && z < 92;
+    slabAt(A, 46, 0, 8, 10, 0, 'tile', PATH);
+    slabAt(A, 44, 10, 12, 6, 0, 'tile', PATH);
+    slabAt(A, 6, 16, 88, 78, 0, 'tile', PV, (x, z) => !inWoldae(x, z) && !(x >= 48 && x < 52 && z < 46), 13);
+    slabAt(A, 48, 16, 4, 30, 0, 'tile', PATH);
+    // 회랑: 바깥 담 6단, 안쪽 붉은 기둥, 지붕 띠(바깥 경사·용마루·안쪽 경사)
+    for (let i = 0; i < 6; i++) wallLayer(A, 0, 10, 100, 90, 1 + 3 * i, WHT, (x, z) => z === 10 && x >= 42 && x <= 57, i % 2);
+    for (let z = 16; z <= 92; z += 4) for (const x of [5, 94]) { A('round:기둥 1×1', x, 1, z, 0, RED); A('round:기둥 1×1', x, 10, z, 0, RED); }
+    for (let x = 6; x <= 93; x += 4) for (const z of [15, 94]) { if (z === 15 && x >= 40 && x <= 59) continue; A('round:기둥 1×1', x, 1, z, 0, RED); A('round:기둥 1×1', x, 10, z, 0, RED); }
+    for (let x = 0; x < 100; x += 2) {
+      if (!(x >= 42 && x < 58)) { A(S, x, 19, 10, 0, ROOF); A(RG, x, 19, 12, 0, ROOF); A(S, x, 19, 14, 2, ROOF); }
+      A(S, x, 19, 94, 0, ROOF); A(RG, x, 19, 96, 0, ROOF); A(S, x, 19, 98, 2, ROOF);
+    }
+    for (let z = 16; z < 94; z += 2) { A(S, 0, 19, z, 3, ROOF); A(RG, 2, 19, z, 1, ROOF); A(S, 4, 19, z, 1, ROOF); A(S, 94, 19, z, 3, ROOF); A(RG, 96, 19, z, 1, ROOF); A(S, 98, 19, z, 1, ROOF); }
+    // 근정문: 붉은 기둥 여덟, 단청 띠, 우진각 지붕
+    for (const x of [42, 46, 52, 56]) for (const z of [10, 16]) for (const y of [1, 10, 19]) A('round:기둥 2×2', x, y, z, 0, RED);
+    slabAt(A, 40, 8, 20, 12, 28, 'plate', GRN);
+    hipRoof(A, 38, 6, 24, 14, 29, ROOF);
+    // 두 단 월대 (속은 비우고 둘레 벽 + 윗판), 계단 셋씩, 돌난간, 드므
+    for (let i = 0; i < 3; i++) wallLayer(A, 18, 46, 64, 46, 1 + 3 * i, ST, () => false, i % 2);
+    slabAt(A, 18, 46, 64, 46, 10, 'plate', ST);
+    for (let i = 0; i < 3; i++) wallLayer(A, 22, 50, 56, 38, 11 + 3 * i, ST, () => false, i % 2);
+    slabAt(A, 22, 50, 56, 38, 20, 'plate', ST);
+    for (const x of [30, 48, 66]) { A('slope:계단 4×3', x, 1, 43, 0, ST); A('slope:계단 4×3', x, 11, 47, 0, ST); }
+    for (const x of [18, 22, 34, 38, 42, 52, 56, 60, 70, 74, 78]) if (x + 3 < 82) A('build:울타리 1×4', x, 11, 46, 0, ST);
+    for (const x of [22, 26, 34, 38, 42, 52, 56, 60, 70, 74]) A('build:울타리 1×4', x, 21, 50, 0, ST);
+    for (let z = 51; z + 3 <= 87; z += 4) { A('build:울타리 1×4', 22, 21, z, 1, ST); A('build:울타리 1×4', 77, 21, z, 1, ST); }
+    A('round:원형 2×2', 24, 21, 52, 0, 13); A('round:원형 2×2', 74, 21, 52, 0, 13);
+    // 품계석과 늘어선 신하들
+    for (let z = 20; z <= 40; z += 4) { A('round:원형 1×1', 45, 1, z, 0, WHT); A('round:원형 1×1', 54, 1, z, 0, WHT); }
+    for (let z = 22; z <= 38; z += 4) { A('figure:시민', 42, 1, z, 0, RED, {l: 20, r: 20}); A('figure:시민', 56, 1, z, 0, 1, {l: 20, r: 20}); }
+    A('figure:기사', 44, 1, 18, 0, RED, {l: 30, r: 90, ri: 'spear'}); A('figure:기사', 54, 1, 18, 0, RED, {l: 30, r: 90, ri: 'spear'});
+    A('figure:기사', 44, 0, 6, 2, 1, {l: 30, r: 90, ri: 'spear'}); A('figure:기사', 54, 0, 6, 2, 1, {l: 30, r: 90, ri: 'spear'});
+    // 근정전 아래층: 9단 붉은 벽, 가운데 큰 문, 창살 창(초록)
+    const HX = 30, HZ = 58, HW = 40, HD = 26, HY = 21, fwx = [34, 40, 56, 62];
+    const door = (x, z) => z === HZ && x >= 46 && x <= 53;
+    const fwin = (x, z, i) => z === HZ && fwx.some(a => x >= a && x <= a + 3) && ((i >= 1 && i <= 3) || (i >= 5 && i <= 7));
+    const swin = (x, z, i) => (x === HX || x === HX + HW - 1) && [64, 72].some(a => z >= a && z <= a + 3) && i >= 1 && i <= 3;
+    for (let i = 0; i < 9; i++) wallLayer(A, HX, HZ, HW, HD, HY + 3 * i, RED, (x, z) => (i <= 6 && door(x, z)) || fwin(x, z, i) || swin(x, z, i), i % 2);
+    for (const a of fwx) { A('build:창문 1×4', a, HY + 3, HZ, 0, GRN); A('build:창문 1×4', a, HY + 15, HZ, 0, GRN); }
+    for (const a of [64, 72]) { A('build:창문 1×4', HX, HY + 3, a, 1, GRN); A('build:창문 1×4', HX + HW - 1, HY + 3, a, 1, GRN); }
+    for (const [x, z] of [[36, 64], [62, 64], [36, 76], [62, 76]]) for (const y of [21, 30, 39]) A('round:기둥 2×2', x, y, z, 0, RED);
+    // 어좌: 단, 일월오봉 병풍, 해·달, 임금
+    fillRect(A, 44, 74, 12, 8, 21, RED, 'brick');
+    for (let i = 0; i < 5; i++) runX(A, 44, 55, 21 + 3 * i, 82, 1, i % 2);
+    A('round:원판 2×2', 46, 36, 81, 0, 0); A('round:원판 2×2', 52, 36, 81, 0, WHT);
+    A(BK(2, 2), 49, 24, 77, 0, 2); A(BK(1, 2), 49, 24, 79, 1, 2); A(BK(1, 2), 49, 27, 79, 1, 2);
+    A('figure:시민', 49, 27, 77, 0, RED, {legs: 'sit', l: 30, r: 30});
+    A('figure:시민', 40, 21, 70, 1, 1, {l: 45, r: 45}); A('figure:시민', 58, 21, 70, 3, 0, {l: 45, r: 45});
+    // 단청 띠, 아래 지붕(두 줄), 위층, 위 지붕
+    slabAt(A, 28, 56, 44, 30, 48, 'plate', GRN);
+    hipRoof(A, 26, 54, 48, 34, 49, ROOF, 2);
+    slabAt(A, 30, 58, 40, 26, 52, 'plate', RED);
+    const uwin = (x, z, i) => z === 62 && [38, 46, 54].some(a => x >= a && x <= a + 3) && i >= 1;
+    for (let i = 0; i < 4; i++) wallLayer(A, 34, 62, 32, 18, 53 + 3 * i, RED, (x, z) => uwin(x, z, i), i % 2);
+    for (const a of [38, 46, 54]) A('build:창문 1×4', a, 56, 62, 0, GRN);
+    slabAt(A, 32, 60, 36, 22, 65, 'plate', GRN);
+    hipRoof(A, 30, 58, 40, 26, 66, ROOF);
+    A(BK(1, 2), 41, 84, 70, 0, ROOF); A(BK(1, 2), 58, 84, 70, 0, ROOF);
+  }},
+  {id: 'gyeongbok', name: '경복궁 (축소 모형)', lv: '어려움', desc: '광화문에서 흥례문·근정문·근정전·사정전·강녕전·교태전으로 이어지는 중심축과 서쪽 연못 위 경회루, 북쪽의 향원정까지 궁 전체를 작게 담은 모형이에요.', build(A) {
+    const RED = 0, GRN = 3, ROOF = 13, WALL = 9, ST = 12, WHT = 4, WTR = 1, W = 92, D = 124;
+    // 궁 담과 기와
+    const gw = (x, z) => z === 0 && x >= 35 && x <= 56;
+    for (let i = 0; i < 2; i++) wallLayer(A, 0, 0, W, D, 3 * i, WALL, gw, i % 2);
+    slabAt(A, 0, 0, W, 1, 6, 'tile', ROOF, x => !(x >= 35 && x <= 56)); slabAt(A, 0, D - 1, W, 1, 6, 'tile', ROOF);
+    slabAt(A, 0, 1, 1, D - 2, 6, 'tile', ROOF); slabAt(A, W - 1, 1, 1, D - 2, 6, 'tile', ROOF);
+    // 광화문: 홍예 셋이 뚫린 석축 + 문루
+    for (const y of [0, 3]) { fillRect(A, 35, 1, 22, 5, y, ST); for (const x of [35, 41, 49, 55]) A(BK(1, 2), x, y, 0, 1, ST); }
+    for (const x of [37, 51]) { A('build:아치 1×4', x, 0, 0, 0, ST); A(BK(1, 4), x, 3, 0, 1, ST); }
+    A('build:아치 1×6', 43, 0, 0, 0, ST);
+    for (let i = 0; i < 2; i++) wallLayer(A, 37, 1, 18, 4, 6 + 3 * i, RED, () => false, i % 2);
+    slabAt(A, 35, 0, 22, 6, 12, 'plate', GRN);
+    hipRoof(A, 34, -1, 24, 6, 13, ROOF);
+    // 중심 길
+    slabAt(A, 44, 6, 4, 22, 0, 'tile', WHT, (x, z) => !(z >= 12 && z <= 15) && !(z >= 19 && z <= 21));
+    // 흥례문과 양옆 행각 담
+    for (const [x, z] of [[40, 12], [51, 12], [40, 15], [51, 15]]) A('round:기둥 1×1', x, 0, z, 0, RED);
+    slabAt(A, 38, 11, 16, 6, 9, 'plate', GRN); hipRoof(A, 36, 10, 20, 6, 10, ROOF);
+    for (const y of [0, 3]) { runX(A, 1, 38, y, 13, WALL, y === 3); runX(A, 53, 90, y, 13, WALL, y === 3); }
+    // 금천과 영제교
+    slabAt(A, 1, 19, 90, 3, 0, 'tile', WTR, x => x < 42 || x > 49, 8);
+    slabAt(A, 42, 19, 8, 3, 0, 'plate', ST);
+    for (const x of [42, 49]) for (const z of [19]) A('build:울타리 1×4', x, 1, z, 0, WHT);
+    // 근정전 회랑(붉은 담 + 기와), 근정문, 박석
+    const gg = (x, z) => z === 28 && x >= 38 && x <= 53;
+    for (let i = 0; i < 2; i++) wallLayer(A, 24, 28, 44, 44, 3 * i, RED, gg, i % 2);
+    slabAt(A, 24, 28, 44, 1, 6, 'tile', ROOF, x => !(x >= 38 && x <= 53)); slabAt(A, 24, 71, 44, 1, 6, 'tile', ROOF);
+    slabAt(A, 24, 29, 1, 42, 6, 'tile', ROOF); slabAt(A, 67, 29, 1, 42, 6, 'tile', ROOF);
+    for (const [x, z] of [[40, 27], [51, 27], [40, 31], [51, 31]]) A('round:기둥 1×1', x, 0, z, 0, RED);
+    slabAt(A, 38, 26, 16, 8, 9, 'plate', GRN); hipRoof(A, 36, 25, 20, 10, 10, ROOF);
+    const inW = (x, z) => x >= 34 && x < 58 && z >= 44 && z < 62;
+    slabAt(A, 25, 32, 42, 39, 0, 'tile', ST, (x, z) => !inW(x, z) && !(x >= 40 && x <= 51 && z <= 33), 13);
+    // 근정전: 두 단 월대, 중층 지붕
+    fillRect(A, 34, 44, 24, 18, 0, WHT); fillRect(A, 36, 46, 20, 14, 3, WHT, 'brick', true);
+    for (let i = 0; i < 3; i++) wallLayer(A, 38, 48, 16, 10, 6 + 3 * i, RED, () => false, i % 2);
+    slabAt(A, 37, 47, 18, 12, 15, 'plate', GRN);
+    hipRoof(A, 36, 46, 20, 14, 16, ROOF, 1);
+    slabAt(A, 38, 48, 16, 10, 16, 'plate', RED);
+    wallLayer(A, 40, 50, 12, 6, 17, RED, () => false, 0);
+    slabAt(A, 39, 49, 14, 8, 20, 'plate', GRN);
+    hipRoof(A, 38, 48, 16, 10, 21, ROOF);
+    // 사정전·강녕전·교태전
+    for (const [x, z, w, d] of [[38, 76, 16, 8], [36, 90, 20, 8], [38, 104, 16, 8]]) {
+      for (let i = 0; i < 2; i++) wallLayer(A, x, z, w, d, 3 * i, RED, () => false, i % 2);
+      slabAt(A, x - 1, z - 1, w + 2, d + 2, 6, 'plate', GRN);
+      hipRoof(A, x - 2, z - 1, w + 4, d + 2, 7, ROOF);
+    }
+    // 경회루: 연못 위 돌기둥 누각과 다리
+    slabAt(A, 3, 56, 20, 30, 0, 'tile', WTR, null, 8);
+    for (const x of [6, 10, 14, 18]) for (const z of [61, 65, 69, 73, 77, 80]) A('round:기둥 1×1', x, 1, z, 0, ST);
+    slabAt(A, 5, 60, 16, 22, 10, 'plate', 11);
+    for (const [x, z] of [[6, 61], [19, 61], [6, 80], [19, 80], [12, 61], [12, 80]]) A('round:기둥 1×1', x, 11, z, 0, RED);
+    slabAt(A, 4, 59, 18, 24, 20, 'plate', GRN);
+    hipRoof(A, 3, 58, 20, 26, 21, ROOF);
+    slabAt(A, 21, 69, 8, 2, 10, 'plate', ST);
+    for (const z of [68, 71]) for (let x = 23; x + 3 < 29; x += 4) A('build:울타리 1×4', x, 11, z, 0, WHT);
+    // 향원정: 북쪽 연못 가운데 정자와 붉은 취향교
+    slabAt(A, 6, 98, 18, 14, 0, 'tile', WTR, null, 8);
+    for (const [x, z] of [[12, 103], [15, 103], [12, 106], [15, 106]]) A('round:기둥 1×1', x, 1, z, 0, RED);
+    A('round:원판 4×4', 12, 10, 103, 0, ST); A('round:돔 4×4', 12, 11, 103, 0, ROOF); A('round:고깔 1×1', 13, 17, 104, 0, 2);
+    slabAt(A, 16, 104, 8, 1, 10, 'plate', RED);
+    // 나무
+    for (const [x, z] of [[70, 40], [76, 50], [82, 62], [72, 80], [80, 95], [70, 110], [84, 30], [10, 30], [16, 40], [28, 92], [28, 108], [60, 90], [62, 112], [84, 115], [6, 118], [26, 118], [74, 22], [12, 24]]) A('nature:소나무', x, 0, z, 0, 3);
   }},
   {id: 'house', name: '미니 2층집', lv: '보통', desc: '창문 일곱 개와 문이 있는 벽돌집. 2층 위에 파란 경사 지붕을 얹어요.', build(A) {
     A(PK(4, 8), 0, 0, 0, 0, 9); A(PK(4, 8), 4, 0, 0, 0, 9);
