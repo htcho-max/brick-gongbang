@@ -3524,6 +3524,189 @@ const MODELS = [
     for (const x of [-14, 10, 32, 56]) A('battle:깃발', x, 0, -66, 0, 0);
     F('사무라이', 14, 0, -62, 0, 0, {l: 0, r: 90, ri: 'katana', h: -30}); F('닌자', 16, 0, -70, 0, 5, {l: 15, r: 30, ri: 'torch'});
   }},
+  {id: 'fstreet', fig: true, name: '상점가 거리', lv: '보통', desc: '찻길과 인도, 카페·빵집·서점이 늘어선 거리. 가게 문으로 들어가 탁자에 앉은 손님과 진열대를 구경하고, 길가의 자동차를 1인칭으로 몰아 보세요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const L = 56, ROAD = 13, WALK = 12, WD = 11;
+    // 찻길(가운데 흰 점선)·인도·가게 바닥
+    const dash = (x, z) => (z === 5 || z === 6) && x % 8 < 4;
+    put(coverPieces(0, 0, L, 12, 'tile', ROAD, (x, z) => !dash(x, z)));
+    for (let x = 0; x < L; x += 8) A('tile:2×4', x, 0, 5, 1, 4);
+    put(coverPieces(0, 12, L, 4, 'plate', WALK, () => true));
+    put(coverPieces(0, 16, L, 20, 'plate', 9, () => true));
+    // 가게 셋: 16×18, 6단, 앞에 문과 큰 창 둘, 납작 지붕과 간판
+    const shops = [[2, 4, 0], [20, 10, 6], [38, 8, 1]];   // [x, 벽 색, 간판 색]
+    for (const [sx, wc, sc] of shops) {
+      const door = (x, z) => z === 16 && x >= sx + 6 && x <= sx + 9;
+      const win = (x, z) => z === 16 && ((x >= sx + 1 && x <= sx + 4) || (x >= sx + 11 && x <= sx + 14));
+      for (let i = 0; i < 6; i++) wallLayer(A, sx, 16, 16, 18, 1 + 3 * i, wc, (x, z) => (i <= 4 && door(x, z)) || (i >= 1 && i <= 3 && win(x, z)), i % 2);
+      A('build:문 1×4', sx + 6, 1, 16, 0, WD);
+      A('build:창문 1×4', sx + 1, 4, 16, 0, WD); A('build:창문 1×4', sx + 11, 4, 16, 0, WD);
+      fillRect(A, sx, 16, 16, 18, 19, 13, 'plate');
+      runX(A, sx, sx + 15, 20, 16, sc, 0); runX(A, sx, sx + 15, 23, 16, sc, 1);
+    }
+    // 카페: 탁자 넷과 손님, 계산대
+    const cx = 2;
+    for (const [tx, tz] of [[cx + 3, 20], [cx + 11, 20], [cx + 3, 25], [cx + 11, 25]]) {
+      A('round:원형 1×1', tx, 1, tz, 0, WD); A(PK(2, 2), tx, 4, tz, 0, 4);
+      A(BK(2, 2), tx - 2, 1, tz, 0, 0);
+    }
+    for (const [tx, tz, c, p] of [[cx + 1, 20, 1, {legs: 'sit', l: 45, r: 30}], [cx + 9, 25, 10, {legs: 'sit', l: 60, r: 0, h: 30}], [cx + 1, 25, 7, {legs: 'sit', l: 20, r: 75}]]) A('figure:시민', tx, 4, tz, 3, c, p);
+    for (const y of [1, 4]) A(BK(1, 6), cx + 5, y, 30, 1, WD);
+    A('tile:1×6', cx + 5, 7, 30, 1, 4); A('figure:시민', cx + 7, 1, 32, 2, 4);
+    // 빵집: 진열대와 빵, 제빵사
+    const bx = 20;
+    for (const y of [1, 4]) { A(BK(1, 6), bx + 3, y, 24, 1, 11); A(BK(1, 6), bx + 9, y, 24, 1, 11); }
+    for (const x of [bx + 3, bx + 9]) A('tile:1×6', x, 7, 24, 1, 9);
+    for (const [x, c] of [[bx + 3, 6], [bx + 5, 11], [bx + 7, 2], [bx + 10, 6], [bx + 12, 11], [bx + 14, 2]]) A('round:원형 1×1', x, 8, 24, 0, c);
+    A('figure:경찰', bx + 7, 1, 28, 2, 4); A('figure:시민', bx + 7, 1, 20, 0, 0, {l: 60, r: 0});
+    // 서점: 양옆 책장과 가운데 독서 탁자
+    const kx = 38;
+    for (const [x, z] of [[kx + 1, 18], [kx + 1, 26], [kx + 14, 18], [kx + 14, 26]]) for (let i = 0; i < 5; i++) A(BK(1, 6), x, 1 + 3 * i, z, 0, [WD, 0, 1, 3, 2][(i + x) % 5]);
+    A(BK(2, 4), kx + 6, 1, 24, 1, WD); A(PK(4, 6), kx + 5, 4, 23, 1, WD);
+    A('figure:시민', kx + 6, 1, 21, 0, 14, {l: 75, r: 75, h: -15}); A('figure:시민', kx + 9, 1, 28, 2, 3, {l: 0, r: 60});
+    // 인도: 가로등·꽃, 걷는 사람
+    for (const x of [1, 19, 37, 54]) A('battle:가로등', x, 1, 12, 0, 5);
+    for (const x of [14, 32, 50]) { A('nature:꽃', x, 1, 15, 0, 0); A('nature:꽃', x + 1, 1, 15, 0, 10); }
+    A('figure:시민', 13, 1, 13, 1, 6, {legs: 'walk', l: 30, r: -30}); A('figure:시민', 31, 1, 14, 3, 1, {legs: 'walk', l: -30, r: 30}); A('figure:경찰', 48, 1, 13, 1, 5, {legs: 'walk', h: 45});
+    // 자동차(1인칭으로 운전석의 사람을 누르면 직접 몰아요)
+    const vx = 10, vz = 0, vy = 1, CAR = 0;
+    for (const x of [0, 2, 4, 6]) { A('technic:바퀴 소', vx + x, vy, vz, 1, 5); A('technic:바퀴 소', vx + x, vy, vz + 5, 1, 5); }
+    A(PK(4, 8), vx, vy + 2, vz + 1, 1, 13);
+    for (const [x, z] of [[0, 1], [0, 3], [4, 1], [4, 3]]) A(BK(2, 4), vx + x, vy + 3, vz + z, 1, CAR);
+    A(PK(1, 8), vx, vy + 5, vz, 1, CAR); A(PK(1, 8), vx, vy + 5, vz + 5, 1, CAR);
+    A(PK(6, 8), vx, vy + 6, vz, 1, CAR);
+    A('technic:핸들', vx + 1, vy + 7, vz + 2, 1, 5); A('figure:시민', vx + 3, vy + 7, vz + 2, 1, 2, {legs: 'sit', l: 75, r: 75});
+    A('technic:모터', vx + 6, vy + 7, vz + 2, 0, 13);
+    A('slope:경사 2×2', vx, vy + 7, vz, 1, CAR); A('slope:경사 2×2', vx, vy + 7, vz + 4, 1, CAR);
+  }},
+  {id: 'fpirate', fig: true, name: '해적선', lv: '어려움', desc: '돛대 둘에 커다란 돛을 단 해적선. 갑판의 대포 사이를 걷고, 계단 두 번으로 뒤쪽 높은 갑판에 올라 선장의 키 앞까지 가 보세요. 선실 문으로 들어갈 수도 있어요.', build(A) {
+    const SEA = 1, HL = 11, DK = 9, SL = 4, BL = 5;
+    for (let x = -8; x < 28; x += 4) for (let z = -8; z < 72; z += 8) A(PK(4, 8), x, 0, z, 0, SEA);
+    fillRect(A, -8, -8, 36, 80, 1, 8, 'tile');
+    // 선체 3단(갈색·검정 띠·갈색)과 뱃머리, 갑판
+    const bow = [[52, 1, 16], [54, 2, 15], [56, 4, 13], [58, 6, 11]];
+    for (let i = 0; i < 3; i++) {
+      const c = i === 1 ? BL : HL, y = 2 + 3 * i;
+      wallLayer(A, 0, 0, 18, 52, y, c, () => false, i % 2);
+      for (const [z, x0, x1] of bow) for (const zz of [z, z + 1]) runX(A, x0, x1, y, zz, c, (i + zz) % 2);
+    }
+    fillRect(A, 0, 0, 18, 52, 11, DK, 'plate');
+    for (const [z, x0, x1] of bow) fillRect(A, x0, z, x1 - x0 + 1, 2, 11, DK, 'plate');
+    // 선실(뒤쪽 13칸, 6단): 앞문, 뒤 창문 둘
+    const cdoor = (x, z) => z === 12 && x >= 7 && x <= 10, cwin = (x, z) => z === 0 && ((x >= 3 && x <= 6) || (x >= 11 && x <= 14));
+    for (let i = 0; i < 6; i++) wallLayer(A, 0, 0, 18, 13, 12 + 3 * i, HL, (x, z) => (i <= 4 && cdoor(x, z)) || (i >= 1 && i <= 3 && cwin(x, z)), i % 2);
+    A('build:문 1×4', 7, 12, 12, 0, BL);
+    A('build:창문 1×4', 3, 15, 0, 0, 2); A('build:창문 1×4', 11, 15, 0, 0, 2);
+    A(BK(2, 4), 3, 12, 3, 1, HL); A('tile:2×4', 3, 15, 3, 1, 2);          // 보물 상자
+    A('figure:해적', 12, 12, 5, 3, 0, {l: 30, r: 90, ri: 'pistol'});
+    // 뒤쪽 높은 갑판으로: 계단 두 번 + 층계참
+    A('slope:계단 4×3', 1, 12, 19, 2, HL);
+    for (let i = 0; i < 3; i++) fillRect(A, 1, 16, 4, 3, 12 + 3 * i, HL, 'brick', i % 2 === 1);
+    A('slope:계단 4×3', 1, 21, 16, 2, HL);
+    for (let i = 0; i < 6; i++) fillRect(A, 1, 13, 4, 3, 12 + 3 * i, HL, 'brick', i % 2 === 1);
+    fillRect(A, 0, 0, 18, 16, 30, DK, 'plate');
+    for (const x of [5, 9, 13]) A('build:울타리 1×4', x, 31, 15, 0, HL);
+    for (const z of [0, 4, 8]) { A('build:울타리 1×4', 0, 31, z, 1, HL); A('build:울타리 1×4', 17, 31, z, 1, HL); }
+    A('technic:핸들', 8, 31, 6, 0, HL); A('figure:해적', 8, 31, 4, 0, 5, {l: 60, r: 60, h: 20});
+    // 난간
+    for (let z = 16; z < 52; z += 4) { A('build:울타리 1×4', 0, 12, z, 1, HL); A('build:울타리 1×4', 17, 12, z, 1, HL); }
+    // 돛대 둘과 돛, 망대, 깃발
+    for (const mz of [24, 38]) {
+      for (const y of [12, 21, 30, 39, 48]) A('round:기둥 2×2', 8, y, mz, 0, HL);
+      for (let i = 0; i < 7; i++) {
+        const y = 24 + 3 * i, z = mz + 2;
+        if (i === 3) { runX(A, 2, 6, y, z, SL, 1); runX(A, 7, 10, y, z, BL, 0); runX(A, 11, 15, y, z, SL, 0); }
+        else runX(A, 2, 15, y, z, SL, i % 2);
+      }
+      A('round:원판 4×4', 7, 57, mz - 1, 0, HL);
+    }
+    A('battle:깃발', 8, 58, 24, 0, BL); A('figure:해적', 8, 58, 38, 0, 6, {l: 150, r: 20, h: 45});
+    // 대포 여섯(양옆으로 겨눔)과 포수
+    for (const z of [28, 32, 44]) { A('battle:대포', 1, 12, z, 1, HL); A('battle:대포', 13, 12, z, 3, HL); }
+    A('figure:해적', 2, 12, 30, 1, 0, {r: 75, ri: 'torch'}); A('figure:해적', 14, 12, 30, 3, 6, {l: 30, r: 120, ri: 'sword'});
+    A('figure:해적', 6, 12, 46, 0, 1, {l: 45, r: 150, ri: 'sword', legs: 'walk'}); A('figure:해적', 10, 12, 20, 2, 0, {l: 20, r: 90, ri: 'katana'});
+    A('figure:해적', 8, 12, 56, 0, 4, {l: 0, r: 165, h: -30});
+    for (const [x, z] of [[6, 30], [10, 30]]) A('round:원형 1×1', x, 12, z, 0, BL);
+  }},
+  {id: 'fjapan', fig: true, name: '사무라이 마을', lv: '보통', desc: '붉은 도리이 문을 지나 돌길을 걸으면 3층 탑과 찻집이 나와요. 찻집 다다미에 앉은 사무라이와 마당에서 겨루는 두 무사, 지붕 위의 닌자를 찾아보세요.', build(A) {
+    const GR = 3, ST = 12, RD = 0, BK5 = 5, WD = 11;
+    for (let x = 0; x < 48; x += 4) for (let z = 0; z < 48; z += 8) A(PK(4, 8), x, 0, z, 0, GR);
+    fillRect(A, 22, 0, 4, 28, 1, ST, 'tile'); fillRect(A, 8, 26, 14, 2, 1, ST, 'tile'); fillRect(A, 26, 26, 8, 2, 1, ST, 'tile');
+    // 도리이
+    for (const x of [18, 28]) for (const y of [1, 10, 19]) A('round:기둥 2×2', x, y, 6, 0, RD);
+    fillRect(A, 20, 6, 8, 2, 19, RD, 'brick');
+    fillRect(A, 16, 6, 16, 2, 28, RD, 'brick'); fillRect(A, 14, 6, 20, 2, 31, BK5, 'plate');
+    // 연못과 바위
+    fillRect(A, 6, 10, 6, 6, 1, 1, 'tile'); A('nature:바위', 12, 1, 12, 0, 12); A('nature:바위', 4, 1, 14, 0, 13);
+    // 3층 탑
+    const door = (x, z) => z === 30 && x >= 8 && x <= 11;
+    for (let i = 0; i < 5; i++) wallLayer(A, 4, 30, 12, 12, 1 + 3 * i, RD, (x, z) => i <= 3 && door(x, z), i % 2);
+    fillRect(A, 3, 29, 14, 14, 16, BK5, 'plate');
+    for (let i = 0; i < 4; i++) wallLayer(A, 5, 31, 10, 10, 17 + 3 * i, RD, () => false, i % 2);
+    fillRect(A, 4, 30, 12, 12, 29, BK5, 'plate');
+    for (let i = 0; i < 4; i++) wallLayer(A, 6, 32, 8, 8, 30 + 3 * i, RD, () => false, i % 2);
+    fillRect(A, 5, 31, 10, 10, 42, BK5, 'plate');
+    A('round:고깔 2×2', 9, 43, 35, 0, 2);
+    A('figure:시민', 9, 1, 35, 2, 2, {l: 30, r: 30});
+    A('figure:닌자', 3, 17, 34, 3, BK5, {l: 15, r: 120, ri: 'katana', legs: 'kneel'});
+    // 찻집: 앞이 트인 16×12, 6단, 경사 지붕, 다다미
+    for (let i = 0; i < 6; i++) wallLayer(A, 28, 28, 16, 12, 1 + 3 * i, WD, (x, z) => z === 28 && x > 28 && x < 43, i % 2);
+    gableRoofX(A, 28, 28, 16, 12, 19, BK5);
+    fillRect(A, 29, 29, 14, 10, 1, 9, 'tile');
+    for (const tx of [32, 38]) { A('round:원형 1×1', tx, 2, 32, 0, WD); A(PK(2, 4), tx - 1, 5, 32, 1, WD); }
+    A('figure:사무라이', 31, 2, 30, 0, 0, {legs: 'sit', l: 30, r: 30, ri: ''}); A('figure:사무라이', 31, 2, 35, 2, 1, {legs: 'sit', l: 45, r: 15, ri: ''});
+    A('figure:시민', 37, 2, 30, 0, 10, {legs: 'sit', l: 60, r: 60}); A('figure:닌자', 40, 28, 33, 0, 14, {legs: 'kneel', l: 0, r: 90, ri: 'katana', h: -45});
+    // 마당에서 겨루는 두 무사
+    A('figure:사무라이', 32, 1, 20, 3, 0, {l: 60, r: 135, ri: 'katana', legs: 'walk'});
+    A('figure:사무라이', 38, 1, 20, 1, 1, {l: 30, r: 90, ri: 'katana', legs: 'walk', h: 15});
+    // 돌등·벚나무
+    for (const z of [12, 20]) { A('battle:가로등', 20, 1, z, 0, ST); A('battle:가로등', 27, 1, z, 0, ST); }
+    for (const [x, z] of [[2, 2], [40, 4], [2, 20], [42, 14], [16, 20], [44, 42]]) A('nature:소나무', x, 1, z, 0, 10);
+    A('figure:닌자', 6, 1, 22, 3, BK5, {l: 90, r: 0, h: 30});
+  }},
+  {id: 'fplane', fig: true, name: '여객기', lv: '어려움', desc: '피규어가 탈 수 있는 크기의 여객기. 왼쪽 계단으로 문을 지나 좌석 사이 통로를 걸어 조종석까지 가 보세요. 승무원과 조종사, 창가 승객이 있어요.', build(A) {
+    const BODY = 4, BELLY = 12, SEAT = 1, TAIL = 0, WD = 11;
+    // 배 아래 둘레(3단)와 바닥
+    for (let i = 0; i < 3; i++) wallLayer(A, 0, 6, 12, 50, 3 * i, BELLY, () => false, i % 2);
+    fillRect(A, 0, 6, 12, 50, 9, SEAT, 'plate');
+    // 동체 벽 4단: 왼쪽 앞문, 양옆 창문, 조종석 앞 큰 창
+    const door = (x, z) => x === 0 && z >= 44 && z <= 47;
+    const wz = [10, 14, 18, 22, 26, 30, 34, 38];
+    const win = (x, z) => (x === 0 || x === 11) && wz.some(z0 => z === z0 || z === z0 + 1);
+    const fwin = (x, z) => z === 55 && x >= 2 && x <= 9;
+    for (let i = 0; i < 5; i++) wallLayer(A, 0, 6, 12, 50, 10 + 3 * i, BODY, (x, z) => door(x, z) || ((i === 1 || i === 2) && win(x, z)) || (i >= 1 && i <= 3 && fwin(x, z)), i % 2);
+    for (const z of wz) { A('build:창문 1×2', 0, 13, z, 1, 1); A('build:창문 1×2', 11, 13, z, 1, 1); }
+    A('build:창문 1×4', 2, 13, 55, 0, 1); A('build:창문 1×4', 6, 13, 55, 0, 1);
+    gableRoofZ(A, 0, 6, 12, 50, 25, BODY);
+    // 좌석 8줄 (가운데 2칸 통로), 승객
+    for (let k = 0; k < 8; k++) {
+      const z = 10 + 4 * k;
+      for (const x of [1, 7]) { A(BK(2, 4), x, 10, z + 1, 1, SEAT); A(BK(1, 4), x, 10, z, 1, SEAT); A(BK(1, 4), x, 13, z, 1, SEAT); }
+    }
+    for (const [x, k, c, p] of [[1, 0, 0, {}], [9, 1, 6, {h: 30}], [3, 3, 10, {l: 45}], [7, 4, 2, {r: 60}], [1, 6, 14, {h: -45}], [9, 7, 3, {l: 30, r: 30}]]) A('figure:시민', x, 13, 11 + 4 * k, 0, c, Object.assign({legs: 'sit'}, p));
+    // 부엌과 승무원
+    for (const y of [10, 13]) A(BK(1, 4), 10, y, 43, 0, 12);
+    A('figure:시민', 7, 10, 45, 3, 1, {l: 45, r: 45});
+    // 조종석 칸막이(가운데 출입구)와 조종사
+    for (let i = 0; i < 5; i++) { runX(A, 1, 4, 10 + 3 * i, 48, BODY, i % 2); runX(A, 7, 10, 10 + 3 * i, 48, BODY, i % 2); }
+    for (const x of [2, 8]) { A(BK(2, 2), x, 10, 51, 0, 5); A('figure:경찰', x, 13, 52, 0, 5, {legs: 'sit', l: 75, r: 75}); }
+    for (const y of [10, 13]) { A(BK(1, 4), 2, y, 54, 1, 13); A(BK(1, 4), 6, y, 54, 1, 13); }
+    // 기수
+    for (let i = 0; i < 6; i++) fillRect(A, 1, 56, 10, 3, 3 * i, BODY, 'brick', i % 2 === 1);
+    for (const x of [1, 3, 5, 7, 9]) A('slope:경사 2×2', x, 18, 57, 2, BODY);
+    A(PK(1, 8), 1, 18, 56, 1, BODY); A(PK(1, 2), 9, 18, 56, 1, BODY);
+    for (let i = 0; i < 4; i++) fillRect(A, 3, 59, 6, 2, 3 * i, BODY, 'brick', i % 2 === 1);
+    // 날개(뒤로 젖힘)와 엔진
+    for (const [x0, x1, z0] of [[-24, -17, 28], [-16, -9, 25], [-8, -1, 22], [12, 19, 22], [20, 27, 25], [28, 35, 28]]) fillRect(A, x0, z0, x1 - x0 + 1, 34 - z0, 9, BELLY, 'plate');
+    for (const x of [-12, 22]) { A('round:기둥 2×2', x, 0, 27, 0, 13); A('round:고깔 2×2', x, 0, 29, 0, 13); }
+    // 꼬리: 몸통 끝, 수직 꼬리날개(빨강), 수평 꼬리날개
+    for (let i = 0; i < 7; i++) fillRect(A, 2, 0, 8, 6, 3 * i, BODY, 'brick', i % 2 === 1);
+    for (let i = 0; i < 6; i++) fillRect(A, 5, 0, 2, 6 - Math.floor(i / 2), 21 + 3 * i, TAIL, 'brick', false);
+    fillRect(A, -6, 0, 8, 4, 21, BODY, 'plate'); fillRect(A, 10, 0, 8, 4, 21, BODY, 'plate');
+    // 타는 계단과 줄 선 승객
+    A('slope:계단 2×3', -3, 0, 44, 3, 12);
+    A('figure:시민', -7, 0, 47, 3, 7, {legs: 'walk', l: 30, r: -30}); A('figure:시민', -10, 0, 48, 3, 8);
+  }},
   {id: 'house', name: '미니 2층집', lv: '보통', desc: '창문 일곱 개와 문이 있는 벽돌집. 2층 위에 파란 경사 지붕을 얹어요.', build(A) {
     A(PK(4, 8), 0, 0, 0, 0, 9); A(PK(4, 8), 4, 0, 0, 0, 9);
     const door = (x, z) => z === 0 && (x === 3 || x === 4);
