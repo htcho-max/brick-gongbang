@@ -224,6 +224,55 @@ body.fp .bp{display:none!important}
   .tool{height:54px;min-width:52px;font-size:12px}
 }
 @media (pointer:coarse){.tool kbd{display:none}}
+.quick,.partsbtn{display:none}
+/* 휴대폰(세로·가로): 위는 한 줄(되돌리기·밤·1인칭·메뉴), 나머지는 메뉴 안으로. 아래는 도구 한 줄 + 접히는 부품·색 서랍 */
+@media (max-width:640px), (max-height:520px){
+  .top{flex-wrap:nowrap;align-items:center;padding-top:calc(env(safe-area-inset-top,0px) + 8px);padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+  .hint{display:none}
+  .brand h1{font-size:19px;gap:6px}
+  .brand h1 .logo{width:20px;height:14px}
+  .quick{display:flex;gap:6px;align-items:center}
+  .qbtn{height:38px;min-width:38px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(29,39,51,.1);white-space:nowrap}
+  .qbtn:disabled{opacity:.45}
+  .qbtn[aria-pressed="true"],.qbtn[aria-expanded="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .chips{display:none;position:fixed;z-index:20;top:calc(env(safe-area-inset-top,0px) + 54px);right:max(10px,env(safe-area-inset-right,0px));width:min(300px,calc(100vw - 20px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(29,39,51,.2);padding:8px;gap:6px;max-height:calc(100vh - 80px);overflow:auto}
+  body.menu-open .chips{display:grid;grid-template-columns:1fr 1fr}
+  .chips .chip{height:44px;justify-content:center;font-size:13.5px;box-shadow:none;padding:0 8px}
+  .chips #count{grid-column:1/-1;height:30px;border:0;background:none;color:var(--muted)}
+  .chips #btnUndo,.chips #btnFP,.chips #btnNight{display:none}
+  #btnClear{min-width:0;color:var(--danger)}
+  .tray{padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px)}
+  .tray-inner{flex-direction:column;align-items:stretch;gap:6px;padding:8px;width:100%;border-radius:14px}
+  .glabel,.sep{display:none}
+  .lower{display:contents}
+  .group.parts{order:1}
+  .lower > .group:first-of-type{order:2}
+  .lower > .group:last-of-type{order:3}
+  .tabs{max-width:none}
+  .partrow{max-width:none;gap:5px}
+  .part{width:54px;height:58px}
+  .part img{width:40px;height:40px}
+  .colors{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding:3px 2px}
+  .colors::-webkit-scrollbar,.tools::-webkit-scrollbar{display:none}
+  .sw{flex:none;width:28px;height:28px}
+  .tools{overflow-x:auto;scrollbar-width:none;gap:5px}
+  .tool{height:48px;min-width:52px;font-size:12px;padding:0 8px;gap:2px}
+  .tool kbd{display:none}
+  .partsbtn{display:flex;min-width:64px;background:#f3f6f9}
+  .pb-top{display:flex;align-items:center;gap:4px}
+  .pdot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.2);display:inline-block}
+  .pb-sub{font-size:10.5px;color:var(--muted);font-weight:700}
+  body.tray-closed .group.parts,body.tray-closed .lower > .group:first-of-type{display:none}
+  .pp,.tp{top:auto;right:10px;left:10px;width:auto;max-height:55vh}
+}
+@media (max-width:640px){
+  .tools{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible}
+  .tool{min-width:0;padding:0 4px;height:46px}
+  .partsbtn{min-width:0}
+  .toast{top:calc(env(safe-area-inset-top,0px) + 58px)}
+  .bp{top:calc(env(safe-area-inset-top,0px) + 56px)}
+  .cutbar{top:calc(env(safe-area-inset-top,0px) + 56px)}
+}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 
@@ -234,7 +283,13 @@ body.fp .bp{display:none!important}
     <h1><span class="logo" aria-hidden="true"></span>브릭 공방</h1>
     <div class="hint" id="hint">클릭으로 놓기 · 드래그로 둘러보기 · 우클릭 드래그로 이동 · 휠로 확대<br>부품을 끌어다 놓아도 돼요 · 윗면·옆면·아랫면에 붙어요 · 브래킷·옆판 스터드에 일반 블럭을 대면 옆으로 붙어요(R로 세로·가로) · 예시·설계도에서 따라 만들기 · 단면으로 속 보기 · P 1인칭 · R 회전 · M 손(골라서 옮기기·돌리기) · T 지형 · N 낮·밤 · B 공중 조립판(Q/E 높이) · X 빼기 · G 기어·자동차 움직이기 · 방향키/WASD 운전 · V 속도 · Tab 분류 · Ctrl+Z 되돌리기</div>
   </div>
-  <div class="chips">
+  <div class="quick" id="quick">
+    <button class="qbtn" id="qUndo" aria-label="되돌리기">↶</button>
+    <button class="qbtn" id="qNight" aria-label="낮·밤 바꾸기">☀</button>
+    <button class="qbtn wide" id="qFP" aria-pressed="false">1인칭</button>
+    <button class="qbtn wide" id="qMenu" aria-expanded="false" aria-controls="chips">☰ 메뉴</button>
+  </div>
+  <div class="chips" id="chips">
     <span class="chip static" id="count">블럭 0개</span>
     <button class="chip" id="btnSaves" title="작품 저장·불러오기">보관함</button>
     <button class="chip" id="btnGal" title="예시 작품과 따라 만드는 설계도">예시·설계도</button>
@@ -264,6 +319,7 @@ body.fp .bp{display:none!important}
       <div class="group">
         <div class="glabel">도구</div>
         <div class="tools">
+          <button class="tool partsbtn" id="btnParts" aria-expanded="true" aria-label="부품·색 펼치기/접기"><span class="pb-top"><i class="pdot" id="partsDot"></i><b id="partsName">2×4</b></span><span class="pb-sub" id="partsSub">부품 ▾</span></button>
           <button class="tool" id="btnRot">↻ 회전<kbd>R</kbd></button>
           <button class="tool" id="btnMove" aria-pressed="false" title="블럭을 눌러 골라서 옮기기·돌리기">✋ 손<kbd>M</kbd></button>
           <button class="tool" id="btnErase" aria-pressed="false">빼기<kbd>X</kbd></button>
@@ -2283,12 +2339,14 @@ const colorBtns = COLORS.map(([name, hex], i) => {
 function selectType(id) {
   typeId = id;
   partBtns.forEach(([k, b]) => b.setAttribute('aria-pressed', k === id));
+  syncPartsBtn();
   const sel = partBtns.find(([k]) => k === id); if (sel) sel[1].scrollIntoView({block: 'nearest', inline: 'nearest'});
   setErase(false);
   refreshGhost();
 }
 function selectColor(i) {
   colorIdx = i;
+  syncPartsBtn();
   colorBtns.forEach((b, k) => b.setAttribute('aria-pressed', k === i));
   setErase(false);
   renderParts();
@@ -2326,6 +2384,32 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 $('btnRot').addEventListener('click', rotate);
 $('btnErase').addEventListener('click', () => setMode(mode === 'erase' ? 'build' : 'erase'));
 $('btnMove').addEventListener('click', cycleMove);
+// ---- 휴대폰 메뉴: 위 빠른 버튼(원래 버튼을 그대로 누름), 메뉴 펼치기, 부품 서랍 접기
+const mobileUI = () => matchMedia('(max-width:640px), (max-height:520px)').matches;
+function mirrorBtn(src, dst, text) {
+  const sync = () => { dst.setAttribute('aria-pressed', src.getAttribute('aria-pressed') || 'false'); dst.disabled = src.disabled; if (text) dst.textContent = text(src); };
+  new MutationObserver(sync).observe(src, {attributes: true, childList: true, characterData: true, subtree: true});
+  dst.addEventListener('click', () => src.click());
+  sync();
+}
+mirrorBtn($('btnUndo'), $('qUndo'));
+mirrorBtn($('btnFP'), $('qFP'));
+mirrorBtn($('btnNight'), $('qNight'), b => b.getAttribute('aria-pressed') === 'true' ? '☾' : '☀');
+$('qNight').removeAttribute('aria-pressed');
+function setMenu(on) { document.body.classList.toggle('menu-open', on); $('qMenu').setAttribute('aria-expanded', on); }
+$('qMenu').addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open')));
+$('chips').addEventListener('click', e => { if (mobileUI() && e.target.closest('button')) setMenu(false); });
+addEventListener('pointerdown', e => { if (document.body.classList.contains('menu-open') && !$('chips').contains(e.target) && e.target !== $('qMenu')) setMenu(false); }, true);
+function setTray(open) {
+  document.body.classList.toggle('tray-closed', !open);
+  $('btnParts').setAttribute('aria-expanded', open);
+  $('partsSub').textContent = open ? '부품 ▾' : '부품 ▴';
+  requestAnimationFrame(updatePad);
+}
+$('btnParts').addEventListener('click', () => setTray(document.body.classList.contains('tray-closed')));
+function syncPartsBtn() { const d = document.getElementById('partsDot'), n = document.getElementById('partsName'); if (!d || !n) return; d.style.background = COLORS[colorIdx][1]; n.textContent = TYPES[typeId].name.length > 6 ? TYPES[typeId].name.slice(0, 6) + '…' : TYPES[typeId].name; }
+if (mobileUI() && innerHeight < 560) setTray(false);
+syncPartsBtn();
 $('btnPose').addEventListener('click', () => { setMode(mode === 'pose' ? 'build' : 'pose'); if (mode === 'pose') toast('피규어를 눌러 팔·다리 자세와 손에 들 무기를 골라요'); });
 
 // ---- 포즈: 피규어 팔·다리 각도와 손에 든 것 바꾸기
@@ -2725,6 +2809,8 @@ function updatePad() {
   if (show) pad.style.bottom = bot;
   $('benchbar').style.bottom = bot;
   $('hb').style.bottom = bot;
+  const mob = matchMedia('(max-width:640px), (max-height:520px)').matches;
+  $('pp').style.bottom = $('tp').style.bottom = mob ? bot : '';
 }
 addEventListener('resize', updatePad);
 $('btnUndo').addEventListener('click', undo);
