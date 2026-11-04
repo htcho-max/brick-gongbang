@@ -149,6 +149,23 @@ body.fp .tray,body.fp .top,body.fp .benchbar{display:none!important}
 .gcard .gacts button.primary{height:34px;border:0;background:var(--danger);color:#fff}
 .bp[hidden]{display:none}
 .bp{position:fixed;z-index:8;top:calc(env(safe-area-inset-top,0px) + 60px);left:max(16px,env(safe-area-inset-left,0px));width:min(330px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(29,39,51,.16);padding:12px;display:flex;flex-direction:column;gap:8px}
+.hb[hidden]{display:none}
+.hb{position:fixed;z-index:8;left:0;right:0;margin:0 auto;width:max-content;bottom:200px;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(29,39,51,.18);padding:8px 10px;max-width:calc(100% - 32px)}
+.hb-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hb-row b{font-size:13px;margin-right:4px;white-space:nowrap}
+.hb button{height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;padding:0 11px;cursor:pointer;white-space:nowrap}
+.hb button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.hb .hb-x{width:34px;padding:0}
+.hb-nudge span{font-size:12px;color:var(--muted);font-weight:700;margin-right:2px}
+.hb-nudge button{min-width:38px;padding:0 8px}
+.boardmenu[hidden]{display:none}
+.boardmenu{position:fixed;z-index:20;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 28px rgba(29,39,51,.18);padding:6px;display:flex;flex-direction:column;min-width:180px}
+.boardmenu button{display:flex;justify-content:space-between;align-items:center;gap:12px;height:38px;border:0;border-radius:8px;background:none;padding:0 12px;font-size:13.5px;cursor:pointer;text-align:left}
+.boardmenu button:hover:not(:disabled){background:#eef3f8}
+.boardmenu button[aria-checked="true"]{background:var(--ink);color:#fff}
+.boardmenu button[aria-checked="true"] span{color:#cfd8e3}
+.boardmenu button:disabled{opacity:.4;cursor:default}
+.boardmenu span{font-size:12px;color:var(--muted)}
 .pp[hidden]{display:none}
 .pp{position:fixed;z-index:8;top:calc(env(safe-area-inset-top,0px) + 200px);max-height:calc(100vh - 330px);min-height:0;overflow:auto;right:max(16px,env(safe-area-inset-right,0px));width:min(320px,calc(100% - 32px));background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 8px 28px rgba(29,39,51,.16);padding:12px;display:flex;flex-direction:column;gap:9px}
 .tp-tools button{display:inline-flex;align-items:center;gap:5px}
@@ -215,7 +232,7 @@ body.fp .bp{display:none!important}
 <header class="top">
   <div class="brand">
     <h1><span class="logo" aria-hidden="true"></span>브릭 공방</h1>
-    <div class="hint" id="hint">클릭으로 놓기 · 드래그로 둘러보기 · 우클릭 드래그로 이동 · 휠로 확대<br>부품을 끌어다 놓아도 돼요 · 윗면·옆면·아랫면에 붙어요 · 브래킷·옆판 스터드에 일반 블럭을 대면 옆으로 붙어요(R로 세로·가로) · 예시·설계도에서 따라 만들기 · 단면으로 속 보기 · P 1인칭 · R 회전 · M 옮기기(한 개→묶음→복사) · B 공중 조립판(Q/E 높이) · X 빼기 · G 기어·자동차 움직이기 · 방향키/WASD 운전 · V 속도 · Tab 분류 · Ctrl+Z 되돌리기</div>
+    <div class="hint" id="hint">클릭으로 놓기 · 드래그로 둘러보기 · 우클릭 드래그로 이동 · 휠로 확대<br>부품을 끌어다 놓아도 돼요 · 윗면·옆면·아랫면에 붙어요 · 브래킷·옆판 스터드에 일반 블럭을 대면 옆으로 붙어요(R로 세로·가로) · 예시·설계도에서 따라 만들기 · 단면으로 속 보기 · P 1인칭 · R 회전 · M 손(골라서 옮기기·돌리기) · T 지형 · N 낮·밤 · B 공중 조립판(Q/E 높이) · X 빼기 · G 기어·자동차 움직이기 · 방향키/WASD 운전 · V 속도 · Tab 분류 · Ctrl+Z 되돌리기</div>
   </div>
   <div class="chips">
     <span class="chip static" id="count">블럭 0개</span>
@@ -248,7 +265,7 @@ body.fp .bp{display:none!important}
         <div class="glabel">도구</div>
         <div class="tools">
           <button class="tool" id="btnRot">↻ 회전<kbd>R</kbd></button>
-          <button class="tool" id="btnMove" aria-pressed="false">옮기기<kbd>M</kbd></button>
+          <button class="tool" id="btnMove" aria-pressed="false" title="블럭을 눌러 골라서 옮기기·돌리기">✋ 손<kbd>M</kbd></button>
           <button class="tool" id="btnErase" aria-pressed="false">빼기<kbd>X</kbd></button>
           <button class="tool" id="btnPose" aria-pressed="false" title="피규어 팔·다리 자세와 무기">포즈<kbd>O</kbd></button>
           <button class="tool" id="btnTerr" aria-pressed="false" title="언덕·물·길을 넓게 깔기, 영역 지우기">지형<kbd>T</kbd></button>
@@ -266,6 +283,22 @@ body.fp .bp{display:none!important}
   <button id="fpExit">나가기 <kbd>Esc</kbd></button>
 </div>
 <div class="fpdot" aria-hidden="true"></div>
+<div class="hb" id="hb" hidden>
+  <div class="hb-row">
+    <b id="hbLabel">블럭</b>
+    <button id="hbRot" title="제자리에서 90° 돌리기 (R)">↻ 돌리기</button>
+    <button id="hbScope" aria-pressed="false" title="한 개만 / 붙어 있는 묶음 전체">한 개만</button>
+    <button id="hbCopy" title="옆에 복사">복사</button>
+    <button id="hbDel" title="빼기 (Delete)">빼기</button>
+    <button id="hbDone" class="hb-x" aria-label="고르기 끝">✕</button>
+  </div>
+  <div class="hb-row hb-nudge">
+    <span>한 칸씩</span>
+    <button data-n="left" aria-label="왼쪽으로">◀</button><button data-n="up" aria-label="앞으로">▲</button><button data-n="down" aria-label="뒤로">▼</button><button data-n="right" aria-label="오른쪽으로">▶</button>
+    <button data-n="rise" title="한 플레이트 위로">위로</button><button data-n="sink" title="한 플레이트 아래로">아래로</button>
+  </div>
+</div>
+<div class="boardmenu" id="boardMenu" role="menu" hidden></div>
 <div class="pp tp" id="tp" hidden>
   <div class="bp-head"><b>지형 · 넓게 채우기</b><button id="tpClose" class="xbtn" aria-label="지형 닫기">✕</button></div>
   <div class="pp-seg tp-tools" id="tpTools"></div>
@@ -1859,14 +1892,13 @@ function computeGroupPlacement(hit) {
 let hoverExtras = [];
 function setHovered(b) {
   if (hovered === b) return;
-  if (hovered && hovered.mesh) { hovered.mesh.material = matFor(TYPES[hovered.t], hovered.c); setDyn(hovered, 'hover', false); }
+  if (hovered && hovered.mesh) { hovered.mesh.material = baseMatOf(hovered); setDyn(hovered, 'hover', false); }
   hoverExtras.forEach(o => { if (o.mesh) { o.mesh.material = matFor(TYPES[o.t], o.c); setDyn(o, 'hover', false); } });
   hoverExtras = [];
   hovered = b;
   if (b) {
     b.mesh.material = matFor(TYPES[b.t], b.c, (mode === 'move' || mode === 'pose' || fpPick) ? 'move' : 'erase');
     setDyn(b, 'hover', true);
-    if (mode === 'move' && moveScope !== 'one') { hoverExtras = connectedGroup(b).filter(o => o !== b); hoverExtras.forEach(o => { o.mesh.material = matFor(TYPES[o.t], o.c, 'move'); setDyn(o, 'hover', true); }); }
   }
 }
 let lastPointer = null, shiftHeld = false;
@@ -1905,7 +1937,13 @@ function updateHover(cx, cy) {
     return;
   }
   const hit = pick(cx, cy);
-  if (mode === 'erase' || (mode === 'move' && !held) || shiftHeld) {
+  if (mode === 'move' && !held) {
+    ghost.visible = false; placement = null; setHovered(null);
+    const hit = pick(cx, cy), hb = hit && hit.object.userData.brick;
+    renderer.domElement.style.cursor = hb ? (selSet.has(hb) ? 'grab' : 'pointer') : 'default';
+    return;
+  }
+  if (mode === 'erase' || shiftHeld) {
     ghost.visible = false; placement = null;
     setHovered(hit && hit.object.userData.brick ? hit.object.userData.brick : null);
     renderer.domElement.style.cursor = hovered ? (mode === 'move' ? 'grab' : 'pointer') : 'default';
@@ -1947,6 +1985,7 @@ function erase(b) { if (!b) return; settle(); removeBrick(b); history.push({op: 
 function undo() {
   settle();
   if (poseEd) closePose();
+  if (sel.length) setSel([]);
   const a = history.pop();
   if (!a) return;
   if (a.op === 'add') removeBrick(a.b);
@@ -1964,6 +2003,7 @@ function undo() {
 function clearAll() {
   if (!bricks.length) return;
   closePose(true);
+  if (sel.length) setSel([]);
   settle();
   const list = bricks.slice();
   list.forEach(removeBrick);
@@ -2013,26 +2053,23 @@ dom.addEventListener('pointerdown', e => {
   active.set(e.pointerId, true);
   tap = active.size === 1 ? {x: e.clientX, y: e.clientY, t: performance.now(), btn: e.button, id: e.pointerId} : null;
   if (mode === 'move' && active.size === 1 && e.button === 0 && !held) {
-    settle();
     const hit = pick(e.clientX, e.clientY), b = hit && hit.object.userData.brick;
-    const list = b && moveScope !== 'one' ? connectedGroup(b) : null;
-    if (b && list && (list.length > 1 || moveScope === 'copy')) {
+    if (b && selSet.has(b) && !vehMap.size) {   // 고른 블럭을 끌면 옮기기 (다른 곳을 끌면 둘러보기)
       controls.enabled = false;
       setHovered(null);
-      const copy = moveScope === 'copy';
-      held = {b, pid: e.pointerId, prev: [typeId, rot, colorIdx], group: {list, q: 0, copy}};
-      if (!copy) list.forEach(removeBrick);
-      ghostGroup.clear();
-      list.forEach(o => { const m = new THREE.Mesh(geoFor(TYPES[o.t], o.c, o.pose), ghostMat); m.rotation.order = 'YXZ'; m.renderOrder = 2; ghostGroup.add(m); });
-      updateHover(e.clientX, liftY(e));
-      dom.style.cursor = 'grabbing';
-    } else if (b) {
-      controls.enabled = false;
-      setHovered(null);
-      held = {b, pid: e.pointerId, prev: [typeId, rot, colorIdx]};
-      removeBrick(b);
-      typeId = b.t; rot = b.r; colorIdx = b.c;
-      refreshGhost();
+      const list = sel.slice();
+      setSel([]);
+      if (list.length > 1) {
+        held = {b, pid: e.pointerId, prev: [typeId, rot, colorIdx], group: {list, q: 0, copy: false}, sx: e.clientX, sy: e.clientY};
+        list.forEach(removeBrick);
+        ghostGroup.clear();
+        list.forEach(o => { const m = new THREE.Mesh(geoFor(TYPES[o.t], o.c, o.pose), ghostMat); m.rotation.order = 'YXZ'; m.renderOrder = 2; ghostGroup.add(m); });
+      } else {
+        held = {b, pid: e.pointerId, prev: [typeId, rot, colorIdx], sx: e.clientX, sy: e.clientY};
+        removeBrick(b);
+        typeId = b.t; rot = b.r; colorIdx = b.c;
+        refreshGhost();
+      }
       updateHover(e.clientX, liftY(e));
       dom.style.cursor = 'grabbing';
     }
@@ -2041,13 +2078,15 @@ dom.addEventListener('pointerdown', e => {
 function endHold(e, commit) {
   const h = held; held = null;
   const b = h.b;
+  if (h.sx !== undefined && !h.moved) commit = false;   // 누르기만 하고 끌지 않았으면 그대로
   if (h.group) {
     ghostGroup.visible = false;
     if (commit && groupPlace && groupPlace.ok && ghostGroup.children.length) {
       const to = groupPlace.pose.map(p => ({t: p.t, r: p.r, c: p.c, pose: p.pose, x: p.x, y: p.y, z: p.z, sn: p.sn ? {dir: p.sn.dir, q: p.sn.q, box: p.sn.box.slice()} : undefined}));
       to.forEach(nb => addBrick(nb, true));
       history.push(h.group.copy ? {op: 'addmany', list: to} : {op: 'gmove', from: h.group.list, to});
-    } else if (!h.group.copy) h.group.list.forEach(o => addBrick(o, false));
+      if (mode === 'move') setSel(to);
+    } else if (!h.group.copy) { h.group.list.forEach(o => addBrick(o, false)); if (mode === 'move') setSel(h.group.list); }
     groupPlace = null;
     [typeId, rot, colorIdx] = h.prev;
     controls.enabled = true;
@@ -2060,7 +2099,8 @@ function endHold(e, commit) {
     const nb = {t: b.t, r: placement.r, c: b.c, pose: b.pose, x: placement.x, y: placement.y, z: placement.z, sn: placement.sn};
     addBrick(nb, true);
     history.push({op: 'move', from: b, to: nb});
-  } else addBrick(b, false);
+    if (mode === 'move') setSel([nb]);
+  } else { addBrick(b, false); if (mode === 'move') setSel([b]); }
   [typeId, rot, colorIdx] = h.prev;
   controls.enabled = true;
   refreshGhost();
@@ -2082,7 +2122,7 @@ addEventListener('pointermove', e => {
     fpLook.x = e.clientX; fpLook.y = e.clientY;
     return;
   }
-  if (held && e.pointerId === held.pid) { updateHover(e.clientX, liftY(e)); return; }
+  if (held && e.pointerId === held.pid) { if (!held.moved && held.sx !== undefined && Math.hypot(e.clientX - held.sx, e.clientY - held.sy) > 6) held.moved = true; updateHover(e.clientX, liftY(e)); return; }
   if (!tdrag || e.pointerId !== tdrag.pid) return;
   const dx = e.clientX - tdrag.x0, dy = e.clientY - tdrag.y0;
   if (!tdrag.started) {
@@ -2115,7 +2155,7 @@ addEventListener('pointerup', e => {
     if (hb) enterFP(hb); else toast('피규어나 자동차를 눌러 주세요');
     return;
   }
-  if (mode === 'move') return;
+  if (mode === 'move') { handTap(e.clientX, e.clientY); return; }
   if (mode === 'terrain') { terrTap(e.clientX, e.clientY); return; }
   if (mode === 'pose') { const fig = figAt(e.clientX, e.clientY); if (fig) openPose(fig); else if (poseEd) closePose(); else toast('자세를 바꿀 피규어를 눌러요'); if (e.pointerType !== 'mouse') setHovered(null); return; }
   shiftHeld = e.shiftKey;
@@ -2148,6 +2188,7 @@ addEventListener('keydown', e => {
   else if (k === 'm') cycleMove();
   else if (k === 'o') setMode(mode === 'pose' ? 'build' : 'pose');
   else if (k === 't') setMode(mode === 'terrain' ? 'build' : 'terrain');
+  else if ((k === 'delete' || k === 'backspace') && mode === 'move' && sel.length) { e.preventDefault(); delSel(); }
   else if (k === 'n') $('btnNight').click();
   else if (k === 'b') setBench(!benchOn);
   else if (k === 'e' && benchOn) moveBench(1);
@@ -2161,6 +2202,12 @@ addEventListener('keydown', e => {
 });
 const DRIVE_KEYS = {' ': ['jump', 1], arrowup: ['throttle', 1], w: ['throttle', 1], arrowdown: ['throttle', -1], s: ['throttle', -1], arrowleft: ['steer', 1], a: ['steer', 1], arrowright: ['steer', -1], d: ['steer', -1]};
 addEventListener('keydown', e => {
+  if (mode === 'move' && sel.length && !held && !fp && !spinning && !(e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName))) {
+    const ak = {arrowup: 'up', arrowdown: 'down', arrowleft: 'left', arrowright: 'right'}[e.key.toLowerCase()];
+    if (ak) { e.preventDefault(); const [dx, dz] = camDir(ak); nudgeSel(dx, 0, dz); return; }
+    if (e.key === 'PageUp') { e.preventDefault(); nudgeSel(0, 1, 0); return; }
+    if (e.key === 'PageDown') { e.preventDefault(); nudgeSel(0, -1, 0); return; }
+  }
   const m = DRIVE_KEYS[e.key.toLowerCase()];
   if (!m || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target && e.target.tagName === 'INPUT') return;
@@ -2248,6 +2295,7 @@ function selectColor(i) {
   refreshGhost();
 }
 function rotate() {
+  if (mode === 'move' && !held && sel.length) { rotateSel(); return; }
   if (held && held.group) { held.group.q = (held.group.q + 1) % 4; if (lastPointer) updateHover(...lastPointer); return; }
   rot = (rot + 1) % 4; refreshGhost(); if (held && lastPointer) updateHover(...lastPointer); }
 function setMode(m) {
@@ -2260,16 +2308,16 @@ function setMode(m) {
   $('btnTerr').setAttribute('aria-pressed', m === 'terrain');
   $('tp').hidden = m !== 'terrain';
   if (m === 'terrain') { syncTerrPanel(); ghost.visible = false; } else { terr.a = null; terrBox.visible = false; }
-  $('btnMove').firstChild.textContent = m === 'move' ? ({one: '한 개 옮기기', group: '묶음 옮기기', copy: '묶음 복사'})[moveScope] : '옮기기';
+  if (m !== 'move' && sel.length) setSel([]);
+  syncHandBar();
   setHovered(null);
   if (lastPointer) updateHover(...lastPointer);
 }
 function cycleMove() {
   if (held) return;
-  if (mode !== 'move') { moveScope = 'one'; setMode('move'); }
-  else if (moveScope === 'one') { moveScope = 'group'; setMode('move'); toast('묶음 옮기기: 붙어 있는 블럭을 한꺼번에 들어요 · 든 채로 R로 돌려요'); }
-  else if (moveScope === 'group') { moveScope = 'copy'; setMode('move'); toast('묶음 복사: 끌어서 놓으면 똑같은 묶음이 하나 더 생겨요'); }
-  else setMode('build');
+  if (mode === 'move') { setMode('build'); return; }
+  setMode('move');
+  toast('블럭을 눌러 고르고 · 고른 블럭을 끌어 옮기거나 돌리기를 눌러요');
 }
 function setErase(on) { if (on) setMode('erase'); else if (mode === 'erase' || mode === 'move') setMode('build'); }
 let toastTimer = 0;
@@ -2492,6 +2540,147 @@ function syncTerrPanel() {
 }
 $('btnTerr').addEventListener('click', () => setMode(mode === 'terrain' ? 'build' : 'terrain'));
 
+// ---- 손: 놓인 블럭을 눌러 고르고, 고른 블럭을 끌어 옮기거나 제자리에서 돌리기·복사·빼기·한 칸씩 밀기
+let sel = [], selScope = 'one';
+const selSet = new Set();
+const baseMatOf = b => matFor(TYPES[b.t], b.c, selSet.has(b) ? 'move' : undefined);
+function setSel(list) {
+  const old = sel;
+  sel = (list || []).filter(b => b.mesh && b._ix);
+  selSet.clear(); sel.forEach(b => selSet.add(b));
+  for (const b of old) if (b.mesh && !selSet.has(b)) { b.mesh.material = matFor(TYPES[b.t], b.c); setDyn(b, 'sel', false); }
+  for (const b of sel) { b.mesh.material = matFor(TYPES[b.t], b.c, 'move'); setDyn(b, 'sel', true); }
+  syncHandBar();
+}
+function syncHandBar() {
+  const on = mode === 'move' && sel.length > 0 && !held;
+  $('hb').hidden = !on;
+  if (!on) return;
+  $('hbLabel').textContent = sel.length === 1 ? TYPES[sel[0].t].name : '블럭 ' + sel.length + '개';
+  $('hbScope').textContent = selScope === 'group' ? '붙은 묶음' : '한 개만';
+  $('hbScope').setAttribute('aria-pressed', selScope === 'group');
+}
+function handTap(cx, cy) {
+  settle();
+  const hit = pick(cx, cy), b = hit && hit.object.userData.brick;
+  if (!b) { setSel([]); return; }
+  if (selScope === 'group') setSel(connectedGroup(b)); else setSel([b]);
+}
+const selBounds = list => { let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity; for (const b of list) { x0 = Math.min(x0, b.x); z0 = Math.min(z0, b.z); x1 = Math.max(x1, b.x + b.w); z1 = Math.max(z1, b.z + b.d); } return [x0, z0, x1, z1]; };
+const cloneAt = (b, dx, dy, dz) => normalize(b.sn
+  ? {t: b.t, c: b.c, pose: b.pose, r: 0, sn: {dir: b.sn.dir, q: b.sn.q, box: [b.sn.box[0] + dx, b.sn.box[1] + dx, b.sn.box[2] + dy * PH, b.sn.box[3] + dy * PH, b.sn.box[4] + dz, b.sn.box[5] + dz]}}
+  : {t: b.t, c: b.c, pose: b.pose, r: b.r, x: b.x + dx, y: b.y + dy, z: b.z + dz});
+function spotFree(list, ignore) {
+  const half = board / 2;
+  for (const p of list) {
+    if (p.x < -half || p.z < -half || p.x + p.w > half || p.z + p.d > half || p.y < 0 || p.y + p.h > MAXH) return false;
+    if (colliders(p.x, p.y, p.z, p.w, p.d, p.h).some(o => !ignore.has(o))) return false;
+  }
+  return true;
+}
+function commitSel(out, msg) {
+  const from = sel.slice();
+  from.forEach(removeBrick);
+  out.forEach(o => addBrick(o, false));
+  history.push({op: 'gmove', from, to: out});
+  changed();
+  setSel(out);
+  if (msg) toast(msg);
+}
+function rotateSel() {
+  if (!sel.length) return;
+  settle();
+  const [x0, z0, x1, z1] = selBounds(sel), ign = new Set(sel);
+  const base = [Math.round((x0 + x1) / 2), Math.round((z0 + z1) / 2)];
+  for (const [ox, oz] of [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]]) {
+    const px = base[0] + ox, pz = base[1] + oz;
+    const out = sel.map(b => {
+      if (b.sn) return normalize({t: b.t, c: b.c, pose: b.pose, r: 0, sn: {dir: (b.sn.dir + 1) % 4, q: b.sn.q, box: rotSnBox(b.sn.box, px, pz, -Math.PI / 2, px, pz)}});
+      const xs = [px - (b.z - pz), px - (b.z + b.d - pz)], zs = [pz + (b.x - px), pz + (b.x + b.w - px)];
+      return normalize({t: b.t, c: b.c, pose: b.pose, r: (b.r + 1) % 4, x: Math.min(...xs), y: b.y, z: Math.min(...zs)});
+    });
+    if (spotFree(out, ign)) { commitSel(out); return; }
+  }
+  toast('주변이 막혀 있어서 돌릴 수 없어요');
+}
+function nudgeSel(dx, dy, dz) {
+  if (!sel.length) return;
+  settle();
+  const out = sel.map(b => cloneAt(b, dx, dy, dz));
+  if (spotFree(out, new Set(sel))) commitSel(out); else toast(dy ? '그쪽은 막혀 있어요' : '그쪽 칸이 막혀 있어요');
+}
+// 화면 기준 방향(앞·뒤·왼쪽·오른쪽)을 판의 칸 방향으로
+function camDir(k) {
+  const f = new THREE.Vector3().subVectors(controls.target, camera.position);
+  const fw = Math.abs(f.x) > Math.abs(f.z) ? [Math.sign(f.x), 0] : [0, Math.sign(f.z)];
+  const rt = [-fw[1], fw[0]];
+  return {up: fw, down: [-fw[0], -fw[1]], right: rt, left: [-rt[0], -rt[1]]}[k];
+}
+function copySel() {
+  if (!sel.length) return;
+  settle();
+  const [x0, z0, x1, z1] = selBounds(sel), W = x1 - x0, D = z1 - z0;
+  for (const [dx, dz] of [[W + 1, 0], [-(W + 1), 0], [0, D + 1], [0, -(D + 1)], [W + 1, D + 1], [-(W + 1), -(D + 1)]]) {
+    const out = sel.map(b => cloneAt(b, dx, 0, dz));
+    if (spotFree(out, new Set())) {
+      out.forEach(o => addBrick(o, true));
+      history.push({op: 'addmany', list: out});
+      changed(); setSel(out); toast('옆에 복사했어요 · 끌어서 옮겨요');
+      return;
+    }
+  }
+  toast('옆에 복사할 빈자리가 없어요');
+}
+function delSel() {
+  if (!sel.length) return;
+  settle();
+  const list = sel.slice();
+  setSel([]);
+  list.forEach(removeBrick);
+  history.push({op: 'clear', list});
+  changed();
+}
+$('hbRot').addEventListener('click', rotateSel);
+$('hbScope').addEventListener('click', () => {
+  selScope = selScope === 'group' ? 'one' : 'group';
+  if (sel.length) setSel(selScope === 'group' ? connectedGroup(sel[0]) : [sel[0]]); else syncHandBar();
+});
+$('hbCopy').addEventListener('click', copySel);
+$('hbDel').addEventListener('click', delSel);
+$('hbDone').addEventListener('click', () => setSel([]));
+document.querySelectorAll('#hb [data-n]').forEach(bt => bt.addEventListener('click', () => {
+  const n = bt.dataset.n;
+  if (n === 'rise') nudgeSel(0, 1, 0); else if (n === 'sink') nudgeSel(0, -1, 0);
+  else { const [dx, dz] = camDir(n); nudgeSel(dx, 0, dz); }
+}));
+
+// ---- 판 크기: 눌러서 목록에서 고르기
+function setBoardSize(next) {
+  if (next === board) return;
+  const h = next / 2;
+  if (bricks.some(b => b.x < -h || b.z < -h || b.x + b.w > h || b.z + b.d > h)) { toast('판 밖으로 나가는 블럭이 있어서 ' + next + '×' + next + '로 줄일 수 없어요'); return; }
+  history.push({op: 'board', from: board});
+  const ratio = next / board;
+  board = next; buildBoard(board);
+  camera.position.sub(controls.target).multiplyScalar(ratio).add(controls.target); controls.update();
+  changed();
+  toast('기본 판을 ' + next + '×' + next + '로 바꿨어요');
+}
+const BOARD_LABEL = {32: '작게', 48: '기본', 64: '넓게', 96: '아주 넓게', 128: '거대하게', 192: '최대'};
+function openBoardMenu() {
+  const m = $('boardMenu');
+  if (!m.hidden) { m.hidden = true; return; }
+  m.innerHTML = BOARD_SIZES.map(n => {
+    const h = n / 2, fits = !bricks.some(b => b.x < -h || b.z < -h || b.x + b.w > h || b.z + b.d > h);
+    return `<button role="menuitemradio" aria-checked="${n === board}" data-n="${n}" ${fits ? '' : 'disabled title="판 밖으로 나가는 블럭이 있어요"'}><b>${n}×${n}</b><span>${BOARD_LABEL[n] || ''}</span></button>`;
+  }).join('');
+  const r = $('btnBoard').getBoundingClientRect();
+  m.style.left = Math.max(8, Math.min(innerWidth - 200, r.left)) + 'px'; m.style.top = (r.bottom + 6) + 'px';
+  m.hidden = false;
+}
+$('boardMenu').addEventListener('click', e => { const bt = e.target.closest('button[data-n]'); if (!bt || bt.disabled) return; $('boardMenu').hidden = true; setBoardSize(+bt.dataset.n); });
+addEventListener('pointerdown', e => { const m = $('boardMenu'); if (!m.hidden && !m.contains(e.target) && e.target !== $('btnBoard') && !$('btnBoard').contains(e.target)) m.hidden = true; }, true);
+
 function turnFig() {
   if (!poseEd) return;
   const b = poseEd.b, t = TYPES[b.t];
@@ -2535,11 +2724,12 @@ function updatePad() {
   const bot = fp ? 'calc(env(safe-area-inset-bottom, 0px) + 24px)' : (document.querySelector('.tray-inner').offsetHeight + 24) + 'px';
   if (show) pad.style.bottom = bot;
   $('benchbar').style.bottom = bot;
+  $('hb').style.bottom = bot;
 }
 addEventListener('resize', updatePad);
 $('btnUndo').addEventListener('click', undo);
 $('btnCam').addEventListener('click', resetCam);
-$('btnBoard').addEventListener('click', cycleBoard);
+$('btnBoard').addEventListener('click', openBoardMenu);
 let clearArmed = 0;
 $('btnClear').addEventListener('click', () => {
   const b = $('btnClear');
@@ -2690,6 +2880,7 @@ function unpackScene(d) {
 }
 function replaceScene(sc) {
   closePose(true);
+  if (sel.length) setSel([]);
   if (fp) exitFP();
   if (spinning) toggleSpin(false);
   settle();
