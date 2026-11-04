@@ -376,12 +376,12 @@ body.fp .bp{display:none!important}
 </div>
 <div class="drivepad" id="drivepad" hidden>
   <button data-k="jump" data-v="1" class="jump" aria-label="점프">점프</button>
-  <button data-k="steer" data-v="1" aria-label="왼쪽으로 돌기">◀</button>
+  <button data-k="steer" data-v="1" aria-label="왼쪽">◀</button>
   <div class="col">
     <button data-k="throttle" data-v="1" aria-label="앞으로">▲</button>
     <button data-k="throttle" data-v="-1" aria-label="뒤로">▼</button>
   </div>
-  <button data-k="steer" data-v="-1" aria-label="오른쪽으로 돌기">▶</button>
+  <button data-k="steer" data-v="-1" aria-label="오른쪽">▶</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -3075,7 +3075,7 @@ function enterFP(b) {
   document.body.classList.add('fp');
   const v = vehMap.get(target), touch = matchMedia('(pointer: coarse)').matches;
   $('fpLabel').textContent = (inCar ? '운전석 · ' : '') + t.name + ' 시점';
-  $('fpHelp').textContent = fp.walk ? (touch ? '버튼으로 걷기·점프 · 블럭 1단 높이는 걸어서 올라가요' : '방향키·WASD로 걷기 · 스페이스 점프 · 1단 높이는 걸어서 올라가요')
+  $('fpHelp').textContent = fp.walk ? (touch ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프')
     : inCar ? (v && v.steer ? (touch ? '오른쪽 버튼으로 운전 · 끌어서 둘러보기' : '방향키·WASD로 운전 · 드래그로 둘러보기') : '자동차가 달려요 · 드래그로 둘러보기')
     : '드래그로 둘러보기';
   $('btnFP').setAttribute('aria-pressed', true);
@@ -3155,13 +3155,36 @@ function walkStep(f, dt) {
   const w = f.walk;
   if (w.feet === undefined) { w.feet = f.b.y * PH; w.vy = 0; w.grounded = true; }
   vehMap.set(f.b, w);
-  const th2 = w.th + ctrl.steer * 2.2 * dt, s = ctrl.throttle * 3.2 * speedMul * dt;
-  if (s !== 0 || th2 !== w.th) {
-    const fw = rotXZ(w.d0[0], w.d0[1], th2), P2 = [w.P[0] + fw[0] * s, w.P[1] + fw[1] * s];
-    const hit = figHit(w, P2, th2, w.feet);
-    if (hit === -1) { w.P = P2; w.th = th2; f.bob += Math.abs(s); }
-    else if (hit !== Infinity && hit - w.feet <= STEP && w.grounded && figHit(w, P2, th2, hit) === -1) { w.P = P2; w.th = th2; w.feet = hit; f.bob += Math.abs(s); }  // 턱 오르기
-    else if (figHit(w, w.P, th2, w.feet) === -1) w.th = th2;
+  // 몸 방향은 시선(드래그로 돌린 방향)을 따라감. 돌 자리가 막혀 있으면 몸은 그대로, 시선만 돌아감
+  if (f.yaw) { const th2 = w.th + f.yaw; if (figHit(w, w.P, th2, w.feet) === -1) { w.th = th2; f.yaw = 0; } }
+  // 시선 기준: W/S 앞뒤, A/D 옆으로(게걸음)
+  const fw = rotXZ(w.d0[0], w.d0[1], w.th + f.yaw), rt = [-fw[1], fw[0]];
+  let mx = fw[0] * ctrl.throttle - rt[0] * ctrl.steer, mz = fw[1] * ctrl.throttle - rt[1] * ctrl.steer;
+  const ml = Math.hypot(mx, mz);
+  if (ml > 1e-6) {
+    const s = 3.2 * speedMul * dt * (ctrl.throttle < 0 && !ctrl.steer ? 0.7 : 1);
+    mx = mx / ml * s; mz = mz / ml * s;
+    // 그대로 → 벽을 따라 미끄러지기(한 축씩) → 조금 비켜 가기(±25°·±50°): 모서리에 살짝 걸리는 정도는 지나감
+    const tries = [[mx, mz], [mx, 0], [0, mz]];
+    for (const a of [0.44, -0.44, 0.87, -0.87]) { const c = Math.cos(a), sn = Math.sin(a); tries.push([(mx * c + mz * sn) * c, (-mx * sn + mz * c) * c]); }
+    const can = (P2) => { const hit = figHit(w, P2, w.th, w.feet); return hit === -1 ? w.feet : (hit !== Infinity && hit - w.feet <= STEP && w.grounded && figHit(w, P2, w.th, hit) === -1) ? hit : null; };
+    let moved = false;
+    for (const [dx, dz] of tries) {
+      if (Math.hypot(dx, dz) < s * 0.25) continue;
+      const P2 = [w.P[0] + dx, w.P[1] + dz], ft = can(P2);
+      if (ft !== null) { w.P = P2; w.feet = ft; f.bob += Math.hypot(dx, dz); moved = true; break; }   // ft > feet이면 턱 오르기
+    }
+    // 문틀·모서리에 살짝 걸리면 옆으로 비켜서 들어가게 (최대 1.2칸)
+    if (!moved) {
+      const px = -mz / s, pz = mx / s;
+      search: for (const off of [0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.05, 1.2]) for (const sg of [1, -1]) {
+        const Q = [w.P[0] + px * off * sg, w.P[1] + pz * off * sg];
+        if (can(Q) === null || can([Q[0] + mx, Q[1] + mz]) === null) continue;
+        const st = Math.min(s, off), P2 = [w.P[0] + px * st * sg, w.P[1] + pz * st * sg], ft = can(P2);
+        if (ft !== null) { w.P = P2; w.feet = ft; f.bob += st; }
+        break search;
+      }
+    }
   }
   const g = figGround(w, w.P, w.th, w.feet);
   w.grounded = w.feet <= g + 1e-3 && w.vy <= 0;
