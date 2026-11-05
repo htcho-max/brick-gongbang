@@ -2517,7 +2517,7 @@ mirrorBtn($('btnNight'), $('qNight'), b => b.getAttribute('aria-pressed') === 't
 $('qNight').removeAttribute('aria-pressed');
 function setMenu(on) { document.body.classList.toggle('menu-open', on); $('qMenu').setAttribute('aria-expanded', on); }
 $('qMenu').addEventListener('click', () => setMenu(!document.body.classList.contains('menu-open')));
-$('chips').addEventListener('click', e => { if (mobileUI() && e.target.closest('button')) setMenu(false); });
+$('chips').addEventListener('click', e => { const bt = e.target.closest('button'); if (mobileUI() && bt && !(bt.id === 'btnClear' && bt.classList.contains('warn'))) setMenu(false); });   // '정말 지울까요?' 확인을 기다리는 동안은 메뉴를 열어 둠
 addEventListener('pointerdown', e => { if (document.body.classList.contains('menu-open') && !$('chips').contains(e.target) && e.target !== $('qMenu')) setMenu(false); }, true);
 function setTray(open) {
   document.body.classList.toggle('tray-closed', !open);
