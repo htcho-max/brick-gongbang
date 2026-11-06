@@ -4403,6 +4403,120 @@ const MODELS = [
     }
     for (const [x, z, r, c] of [[20, 101, 0, 4], [66, 100, 2, 0], [110, 101, 0, 1]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
   }},
+  {id: 'fgwanghwamun', fig: true, board: 192, name: '광화문 광장', lv: '도전', desc: '북악산 아래 광화문부터 이어지는 광장. 거북선과 명량분수 너머 높은 받침 위의 이순신 장군, 해시계·측우기 앞에 앉은 세종대왕, 유리 바닥 아래 옛 관청 터, 월대 위 수문장과 세 개의 홍예문까지 걸어 보세요. 서쪽엔 세종문화회관, 동쪽 세종대로 건너엔 높은 빌딩들이 서 있어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 136, D = 160, RED = 0, GRN = 3, ROOF = 13, ST = 4, GOLD = 2, BRONZE = 13;
+    const inR = (x, z, x0, z0, x1, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+    const pool = (x, z) => inR(x, z, 38, 10, 57, 29), sjPed = (x, z) => inR(x, z, 42, 55, 53, 64), ruins = (x, z) => inR(x, z, 26, 96, 39, 107);
+    const gate = (x, z) => inR(x, z, 40, 132, 87, 145), wol = (x, z) => inR(x, z, 52, 120, 75, 131);
+    const tunnels = [[61, 6], [49, 4], [75, 4]], inTun = (x, z) => gate(x, z) && tunnels.some(([t, w]) => x >= t && x < t + w);
+    const isRoad = (x, z) => (x >= 72 && x <= 103 && z <= 111) || (x >= 104 && z >= 104 && z <= 111);
+    const roadC = (x, z) => {
+      if (z >= 2 && z <= 7 && x >= 72 && x <= 103) return x % 2 === 0 ? 4 : 13;
+      if (x >= 72 && x <= 103 && z < 104) return x === 88 ? 2 : (x - 72) % 4 === 0 && x > 72 && z % 8 < 4 ? 4 : 13;
+      if (x >= 104 && z === 108 && x % 8 < 4) return 4;
+      return 13;
+    };
+    const base = (x, z) => {
+      if (z >= 146 || (gate(x, z) && !inTun(x, z)) || wol(x, z) || pool(x, z) || sjPed(x, z) || ruins(x, z)) return null;
+      if (inTun(x, z)) return ['tile', 9];
+      if (z >= 140) return ['plate', GRN];
+      if (z >= 138) return ['plate', 12];
+      if (isRoad(x, z)) return ['tile', roadC(x, z)];
+      if ((x >= 104 && z < 104) || x < 18) return ['plate', 12];
+      return ['tile', (x * 7 + z * 3) % 9 === 0 ? 12 : 9];
+    };
+    const groups = new Map();
+    for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) { const b = base(x, z); if (b) { const k = b.join('|'); if (!groups.has(k)) groups.set(k, new Set()); groups.get(k).add(x + ',' + z); } }
+    for (const [k, s] of groups) { const [kind, c] = k.split('|'); put(coverPieces(0, 0, W, 146, kind, +c, (x, z) => s.has(x + ',' + z))); }
+    // ── 북악산과 궁 담장
+    const g = x => Math.exp(-(((x - 62) / 30) ** 2));
+    groundFrom(A, 0, 146, W, 14, (x, z) => Math.max(3, 3 * Math.floor((z - 145) * (0.8 + 1.4 * g(x)))), () => GRN, GRN);
+    for (let x = 4; x < W; x += 9) { const z = 148 + (x * 7) % 9, h = Math.max(3, 3 * Math.floor((z - 145) * (0.8 + 1.4 * g(x)))), h2 = Math.max(3, 3 * Math.floor((z - 144) * (0.8 + 1.4 * g(x)))); if (h === h2) A('nature:소나무', x, h, z, 0, (x % 4) ? GRN : 7); }
+    for (const [x0, w] of [[0, 40], [88, 48]]) { for (let i = 0; i < 4; i++) fillRect(A, x0, 138, w, 2, 1 + 3 * i, i ? 9 : 12); for (let x = x0; x < x0 + w; x += 2) A('slope:용마루 2×2', x, 13, 138, 0, ROOF); }
+    // ── 광화문: 홍예 셋이 뚫린 석축, 붉은 기둥, 중층 우진각 지붕
+    groundFrom(A, 40, 132, 48, 14, (x, z) => inTun(x, z) ? 0 : 21, () => 12, ST);
+    for (const [t, w] of tunnels) {
+      for (const y of [15, 18]) fillRect(A, t, 133, w, 12, y, ST);
+      for (const z of [132, 145]) { if (w === 6) A('build:아치 1×6', t, 15, z, 0, ST); else { A('build:아치 1×4', t, 15, z, 0, ST); A(BK(1, 4), t, 18, z, 1, ST); } }
+    }
+    for (const x of [46, 53, 60, 67, 74, 80]) for (const z of [134, 142]) for (const y of [21, 30]) A('round:기둥 2×2', x, y, z, 0, RED);
+    slabAt(A, 46, 134, 36, 10, 39, 'plate', GRN);
+    hipRoof(A, 44, 132, 40, 14, 40, ROOF, 2);
+    slabAt(A, 48, 136, 32, 6, 43, 'plate', RED);
+    const uwin = (x, z, i) => (z === 136 || z === 141) && [52, 62, 72].some(a => x >= a && x <= a + 3) && i >= 1;
+    for (let i = 0; i < 4; i++) wallLayer(A, 48, 136, 32, 6, 44 + 3 * i, RED, (x, z) => uwin(x, z, i), i % 2);
+    for (const a of [52, 62, 72]) for (const z of [136, 141]) A('build:창문 1×4', a, 47, z, 0, GRN);
+    slabAt(A, 46, 134, 36, 10, 56, 'plate', GRN);
+    hipRoof(A, 44, 132, 40, 14, 57, ROOF);
+    A(BK(1, 2), 46, 66, 138, 0, ROOF); A(BK(1, 2), 81, 66, 138, 0, ROOF);
+    // 월대와 해치상, 수문장
+    groundFrom(A, 52, 120, 24, 12, () => 3, () => 12, ST, () => true);
+    for (const x of [48, 78]) { A(BK(2, 3), x, 1, 123, 0, ST); A(BK(2, 2), x, 4, 123, 0, ST); A('round:원형 1×1', x, 7, 123, 0, ST); A('round:원형 1×1', x + 1, 7, 123, 0, ST); }
+    for (const x of [58, 68]) A('figure:기사', x, 3, 127, 2, RED, {l: 30, r: 90, ri: 'spear'});
+    for (const x of [56, 70]) A('figure:기사', x, 3, 130, 2, 1, {l: 0, r: 60, ri: 'sword'});
+    // ── 이순신 장군: 거북선, 명량분수, 높은 받침 위 동상
+    put(coverPieces(38, 10, 20, 20, 'tile', 1, (x, z) => !inR(x, z, 43, 15, 52, 24)));
+    for (let x = 41; x <= 54; x++) for (let z = 13; z <= 26; z++) if ((x === 41 || x === 54 || z === 13 || z === 26) && (x + z) % 2 === 0) A('round:기둥 1×1', x, 1, z, 0, TRANS);
+    for (const y of [0, 3]) fillRect(A, 43, 15, 10, 10, y, 12);
+    for (const y of [6, 9]) fillRect(A, 44, 16, 8, 8, y, 12);
+    for (let i = 0; i < 10; i++) fillRect(A, 46, 18, 4, 4, 12 + 3 * i, ST, 'brick', i % 2);
+    fillRect(A, 45, 17, 6, 6, 42, 12, 'plate');
+    for (let i = 0; i < 4; i++) { A(BK(1, 2), 46, 43 + 3 * i, 20, 0, BRONZE); A(BK(1, 2), 49, 43 + 3 * i, 20, 0, BRONZE); }
+    for (const y of [46, 55]) A('round:기둥 1×1', 47, y, 19, 0, 12);
+    A('round:원판 1×1', 47, 64, 19, 0, 5);
+    for (let i = 0; i < 6; i++) fillRect(A, 46, 20, 4, 2, 55 + 3 * i, BRONZE, 'brick', i % 2);
+    for (const y of [64, 67, 70]) { A(BK(1, 2), 45, y, 20, 0, BRONZE); A(BK(1, 2), 50, y, 20, 0, BRONZE); }
+    A(PK(2, 6), 45, 73, 20, 1, BRONZE);
+    A('round:원형 2×2', 47, 74, 20, 0, BRONZE); A('round:원판 2×2', 47, 77, 20, 0, BRONZE); A('round:고깔 1×1', 47, 78, 20, 0, BRONZE);
+    // 거북선
+    A(PK(4, 8), 44, 1, 3, 1, 11);
+    A(BK(1, 8), 44, 2, 3, 1, 11); A(BK(1, 8), 44, 2, 6, 1, 11); A(BK(1, 2), 44, 2, 4, 0, 11); A(BK(1, 2), 51, 2, 4, 0, 11);
+    for (let x = 44; x < 52; x += 2) { A('slope:경사 2×2', x, 5, 3, 0, ROOF); A('slope:경사 2×2', x, 5, 5, 2, ROOF); }
+    A(BK(1, 2), 43, 2, 4, 0, RED); A('round:원형 1×1', 43, 5, 4, 0, 2);
+    // ── 세종대왕: 해시계·측우기, 받침 위 앉은 금빛 동상
+    for (const y of [0, 3, 6]) fillRect(A, 42, 55, 12, 10, y, 12);
+    for (const y of [9, 12]) fillRect(A, 44, 57, 8, 6, y, BRONZE);
+    for (let i = 0; i < 9; i++) runX(A, 44, 51, 9 + 3 * i, 63, BRONZE, i % 2);
+    A('tile:1×6', 45, 36, 63, 1, GOLD);
+    fillRect(A, 45, 57, 6, 6, 15, GOLD);
+    for (let i = 0; i < 4; i++) fillRect(A, 46, 60, 4, 3, 18 + 3 * i, GOLD, 'brick', i % 2);
+    for (const y of [18, 21]) { A(BK(1, 3), 45, y, 59, 0, GOLD); A(BK(1, 3), 50, y, 59, 0, GOLD); }
+    A('tile:2×2', 47, 18, 58, 0, 1);
+    A('round:원형 2×2', 47, 30, 60, 0, GOLD); A('round:원판 2×2', 47, 33, 60, 0, 5); A('round:원형 1×1', 47, 34, 61, 0, 5);
+    A(BK(2, 2), 38, 1, 50, 0, 12); A('round:돔 2×2', 38, 4, 50, 0, 11);
+    A(BK(1, 1), 57, 1, 51, 0, 12); A('round:원형 1×1', 57, 4, 51, 0, BRONZE);
+    for (let x = 42; x <= 53; x += 2) { A('nature:꽃', x, 1, 66, 0, x % 4 ? 0 : 10); A('nature:꽃', x + 1, 1, 66, 0, 2); }
+    // ── 유리 바닥 아래 옛 관청 터
+    wallLayer(A, 26, 96, 14, 12, 0, 13, () => false, 0);
+    runX(A, 28, 37, 0, 101, 11); runZ(A, 98, 100, 0, 32, 11); runZ(A, 102, 105, 0, 32, 11);
+    put(coverPieces(27, 97, 12, 10, 'plate', 11, (x, z) => z !== 101 && x !== 32));
+    slabAt(A, 26, 96, 14, 12, 3, 'plate', TRANS);
+    // ── 광장 가로수와 사람들
+    for (let z = 34; z <= 128; z += 7) for (const x of [22, 68]) { if (z >= 50 && z <= 68) continue; if (x === 22 && z >= 94 && z <= 108) continue; if (z >= 116 && z <= 131 && x === 68) continue; A('nature:소나무', x, 1, z, 0, (z % 3) ? GRN : 7); }
+    const people = [[30, 12, 0, 1, 'walk'], [60, 16, 2, 10, 'walk'], [34, 35, 0, 6, ''], [58, 40, 3, 14, 'walk'], [40, 70, 2, 0, ''], [52, 72, 0, 4, 'walk'], [30, 82, 1, 2, 'walk'], [62, 90, 2, 8, ''], [44, 100, 0, 3, 'walk'], [50, 112, 2, 7, 'walk'], [30, 3, 0, 5, 'walk'], [64, 5, 2, 1, '']];
+    for (const [x, z, r, c, l] of people) A('figure:시민', x, 1, z, r, c, l ? {legs: 'walk', l: 30, r: -30} : {l: 90, r: 0, h: 15});
+    A('figure:시민', 33, 4, 101, 0, 10, {l: 60, r: 60, h: -45});
+    A('figure:경찰', 106, 1, 50, 1, 5);
+    // ── 세종문화회관: 흰 돌벽, 큰 문, 앞 열주와 처마
+    const sjDoor = (x, z) => x === 17 && z >= 50 && z <= 57, slit = (x, z, l) => x === 17 && l >= 5 && l <= 10 && z % 8 >= 2 && z % 8 <= 3 && !(z >= 48 && z <= 59);
+    for (let l = 0; l < 12; l++) wallLayer(A, 0, 16, 18, 80, 1 + 3 * l, ST, (x, z) => (l <= 4 && sjDoor(x, z)) || slit(x, z, l), l % 2);
+    A('build:문 1×4', 17, 1, 50, 1, 11); A('build:문 1×4', 17, 1, 54, 1, 11);
+    for (let z = 18; z <= 90; z += 8) if (z !== 50) for (let i = 0; i < 4; i++) A('round:기둥 2×2', 19, 1 + 9 * i, z, 0, ST);
+    slabAt(A, 0, 16, 22, 80, 37, 'plate', 12);
+    for (let z = 16; z < 96; z += 2) A('slope:경사 2×2', 20, 38, z, 1, ROOF);
+    // ── 세종대로 건너 빌딩들(교보빌딩 · 유리 빌딩 · 낮은 돌 건물)
+    const tower = (x0, z0, w, d, L, col) => {
+      const door = (x, z) => x === x0 && z >= z0 + Math.floor(d / 2) - 2 && z <= z0 + Math.floor(d / 2) + 1;
+      for (let l = 0; l < L; l++) wallLayer(A, x0, z0, w, d, 1 + 3 * l, col(l), (x, z) => l <= 4 && door(x, z), l % 2);
+      A('build:문 1×4', x0, 1, z0 + Math.floor(d / 2) - 2, 1, 11);
+      fillRect(A, x0, z0, w, d, 1 + 3 * L, 13, 'plate');
+    };
+    tower(110, 10, 20, 20, 28, l => l % 3 === 1 ? 5 : 11);
+    tower(110, 42, 20, 20, 24, l => l % 4 === 0 ? 4 : TRANS);
+    tower(110, 74, 18, 22, 12, l => l % 3 === 1 && l > 1 ? TRANS : 9);
+    for (const z of [36, 68, 100]) A('battle:가로등', 105, 1, z, 0, 5);
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
