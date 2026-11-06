@@ -4264,6 +4264,50 @@ const MODELS = [
     A('round:고깔 1×1', 46, 155, 121, 0, 0);
     for (const [x, z, r, c] of [[42, 119, 0, 1], [50, 124, 2, 10], [40, 124, 1, 6]]) A('figure:시민', x, 63, z, r, c, {l: 60, r: 0, h: -10});
   }},
+  {id: 'fbangju', fig: true, name: '제주 방주교회', lv: '보통', desc: '노아의 방주처럼 물 위에 떠 있는 듯한 제주의 교회. 하늘을 비추는 얕은 연못 사이 돌다리를 건너 문으로 들어가면, 낮은 창으로 물빛이 드는 나무 예배당과 긴 의자, 하얀 십자가가 있어요. 지붕은 은빛·회색 금속판을 바둑판처럼 이어 붙였어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 72, D = 48, BX = 12, BZ = 16, BW = 48, BD = 16, WALL = 11, WD = 11;
+    const inPool = (x, z) => x >= 4 && x <= 67 && z >= 6 && z <= 41;
+    const onBase = (x, z) => x >= BX && x < BX + BW && z >= BZ && z < BZ + BD;
+    const bridge = (x, z) => x >= 4 && x < BX && z >= 22 && z <= 25;
+    // 풀밭과 연못(하늘색·파랑 물결), 연못 가장자리 돌
+    put(coverPieces(0, 0, W, D, 'plate', 3, (x, z) => !inPool(x, z)));
+    put(coverPieces(0, 0, W, D, 'tile', 8, (x, z) => inPool(x, z) && !onBase(x, z) && !bridge(x, z) && (x * 3 + z * 5) % 11 !== 0));
+    put(coverPieces(0, 0, W, D, 'tile', 1, (x, z) => inPool(x, z) && !onBase(x, z) && !bridge(x, z) && (x * 3 + z * 5) % 11 === 0));
+    // 물 위에 떠 있는 듯한 어두운 받침과 돌다리
+    fillRect(A, BX, BZ, BW, BD, 0, 13);
+    fillRect(A, 4, 22, 8, 4, 0, 12);
+    // 벽: 나무, 아래쪽에 물빛이 드는 낮은 창
+    const winX = x => x >= BX + 3 && x <= BX + BW - 4 && (x - BX - 3) % 6 < 4;
+    const door = (x, z) => x === BX && z >= 22 && z <= 25;
+    for (let i = 0; i < 5; i++) wallLayer(A, BX, BZ, BW, BD, 3 + 3 * i, WALL, (x, z) => (i <= 4 && door(x, z)) || (i <= 2 && (z === BZ || z === BZ + BD - 1) && winX(x)), i % 2);
+    A('build:문 1×4', BX, 3, 22, 1, WD);
+    for (let x = BX + 3; x + 3 <= BX + BW - 4; x += 6) for (const z of [BZ, BZ + BD - 1]) A('build:창문 1×4', x, 3, z, 0, 5);
+    // 바둑판 금속 지붕: 처마가 벽 밖으로 1칸, 양 끝으로 2칸 나오고 용마루는 길이 방향
+    const RX = BX - 2, RW = BW + 4, RZ = BZ - 1, RD = BD + 2, RY = 18, MET = [12, 4, 13, 12, 5, 4, 13];
+    const mc = (x, lv, side) => MET[((x >> 1) + lv * 3 + side * 2) % MET.length];
+    for (let lv = 0; ; lv++) {
+      const zf = RZ + 2 * lv, zb = RZ + RD - 2 - 2 * lv, yy = RY + 3 * lv;
+      if (zf > zb) break;
+      if (zf === zb) { for (let x = RX; x < RX + RW; x += 2) A('slope:용마루 2×2', x, yy, zf, 0, mc(x, lv, 0)); break; }
+      for (let x = RX; x < RX + RW; x += 2) { A('slope:경사 2×2', x, yy, zf, 0, mc(x, lv, 0)); A('slope:경사 2×2', x, yy, zb, 2, mc(x, lv, 1)); }
+      if (zb - zf > 2) fillRect(A, RX, zf + 2, RW, zb - zf - 2, yy, lv === 0 ? WD : 13, 'brick', lv % 2 === 1);
+    }
+    // 예배당: 가운데 통로 양옆 긴 의자, 강단과 하얀 십자가
+    for (let x = BX + 6; x <= BX + BW - 12; x += 4) for (const z of [BZ + 2, BZ + 10]) A(BK(1, 4), x, 3, z, 0, WD);
+    for (const [x, z, c] of [[BX + 10, BZ + 2, 1], [BX + 18, BZ + 12, 10], [BX + 26, BZ + 2, 4], [BX + 30, BZ + 10, 2]]) A('figure:시민', x, 6, z, 3, c, {legs: 'sit', l: 20, r: 20});
+    fillRect(A, BX + BW - 8, BZ + 4, 6, 8, 3, 9, 'plate');
+    A(BK(2, 2), BX + BW - 7, 4, BZ + 7, 0, WD); A('tile:2×2', BX + BW - 7, 7, BZ + 7, 0, 9);
+    const CX = BX + BW - 2, CZ = BZ + 7;
+    for (const y of [4, 7, 10]) A(BK(1, 1), CX, y, CZ, 0, 4);
+    A(BK(1, 3), CX, 13, CZ - 1, 0, 4); A(PK(1, 1), CX, 16, CZ, 0, 4); A(PK(1, 1), CX, 17, CZ, 0, 4);
+    A('figure:시민', BX + BW - 6, 4, BZ + 9, 1, 5, {l: 70, r: 70, h: -10});
+    // 바깥: 제주 돌담, 소나무, 걸어오는 사람들
+    for (let x = 0; x < W; x += 2) if (x < 30 || x > 41) A('nature:바위', x, 1, D - 2, 0, 5);
+    for (let z = 0; z < D - 2; z += 2) if (z < 20 || z > 27) { A('nature:바위', 0, 1, z, 0, 5); }
+    for (const [x, z, c] of [[2, 2, 3], [10, 1, 3], [24, 2, 3], [50, 1, 3], [64, 2, 3], [69, 10, 3], [69, 30, 10], [40, 44, 3], [56, 44, 3]]) A('nature:소나무', x, 1, z, 0, c);
+    for (const [x, z, r, c, p] of [[2, 14, 0, 6, {legs: 'walk', l: 30, r: -30}], [2, 30, 0, 14, {l: 90, r: 0}], [30, 3, 1, 0, {legs: 'walk', l: -30, r: 30}]]) A('figure:시민', x, x >= 4 && x < BX ? 3 : 1, z, r, c, p);
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
