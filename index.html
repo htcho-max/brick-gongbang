@@ -4768,6 +4768,97 @@ const MODELS = [
     const trees = [[2, 14], [2, 30], [2, 46], [2, 76], [2, 92], [2, 108], [2, 124], [138, 56], [138, 70], [138, 126], [56, 4], [86, 4], [100, 2], [120, 4], [134, 6], [20, 4], [36, 4], [6, 56], [60, 124], [80, 90], [80, 112], [58, 88], [24, 64], [88, 72], [126, 72], [50, 124], [44, 6]];
     trees.forEach(([x, z], i) => A('nature:소나무', x, 1, z, 0, [3, RED, 6, 3, 2, RED][i % 6]));
   }},
+  {id: 'fgeumnarae', fig: true, name: '금천구 금나래초등학교', lv: '도전', desc: '위에서 보면 H자 모양인 5층 학교. 가운데 마당 놀이터에서 미끄럼틀·그네·시소를 타고, 현관으로 들어가면 신발장 로비 양옆 교실에서 수업이 한창이에요. 맨 위 5층은 회색 벽, 운동장에선 축구 시합, 뒤뜰엔 학교 나무 배롱나무(분홍)가 피어 있어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 120, D = 120, WALL = 4, TOP = 12, GL = TRANS, PINK = 10;
+    const inR = (x, z, x0, z0, x1, z1) => x >= x0 && x <= x1 && z >= z0 && z <= z1;
+    const H = (x, z) => inR(x, z, 10, 60, 21, 115) || inR(x, z, 98, 60, 109, 115) || inR(x, z, 22, 82, 97, 93);
+    const play = (x, z) => inR(x, z, 48, 64, 71, 79);
+    const base = (x, z) => {
+      if (z <= 5) return ['tile', (z === 2 || z === 3) && x % 8 < 4 ? 4 : 13];
+      if (z <= 7) return ['plate', 12];
+      if (H(x, z)) return ['plate', 9];
+      if (inR(x, z, 10, 12, 109, 53)) return inR(x, z, 13, 15, 106, 50) ? ['plate', (x === 59 || x === 60) ? 4 : 3] : ['plate', 0];
+      if (play(x, z)) return ['plate', 6];
+      if (inR(x, z, 22, 60, 97, 81)) return ['tile', 9];
+      if (inR(x, z, 22, 94, 97, 115)) return ['plate', x >= 58 && x <= 61 ? 9 : 3];
+      if (z >= 60) return ['plate', 3];
+      return ['tile', 12];
+    };
+    const groups = new Map();
+    for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) { const b = base(x, z); const k = b.join('|'); if (!groups.has(k)) groups.set(k, new Set()); groups.get(k).add(x + ',' + z); }
+    for (const [k, s] of groups) { const [kind, c] = k.split('|'); put(coverPieces(0, 0, W, D, kind, +c, (x, z) => s.has(x + ',' + z))); }
+    // ── H자 교사동: 5층(한 층 = 6단), 1~3단은 유리창, 6칸마다 기둥, 5층은 회색, 층마다 바닥판, 옥상
+    const BX = 8, BZ = 58, BW = 104, BD = 60, N = BW * BD;
+    const wallCell = new Uint8Array(N), inner = new Uint8Array(N), pier = new Uint8Array(N);
+    for (let j = 0; j < BD; j++) for (let i = 0; i < BW; i++) {
+      const x = BX + i, z = BZ + j; if (!H(x, z)) continue;
+      const ox = !H(x - 1, z) || !H(x + 1, z), oz = !H(x, z - 1) || !H(x, z + 1);
+      const diag = !H(x - 1, z - 1) || !H(x + 1, z - 1) || !H(x - 1, z + 1) || !H(x + 1, z + 1);
+      const n = j * BW + i;
+      if (ox || oz || diag) { wallCell[n] = 1; pier[n] = (ox && oz) || (!ox && !oz) || (oz && x % 6 === 0) || (ox && z % 6 === 0) ? 1 : 0; } else inner[n] = 1;
+    }
+    const door = (x, z) => (z === 82 && x >= 56 && x <= 63) || (z === 60 && x >= 14 && x <= 17) || (z === 93 && x >= 56 && x <= 59) || (z === 60 && x >= 102 && x <= 105);
+    const lay = (y, masks) => { for (const [c, m] of masks) for (const [i, j, sx, sz] of greedyTile(m, BW, BD, 'brick')) { const o = pieceAt('brick', BX + i, BZ + j, sx, sz, y, c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); } };
+    for (let f = 0; f < 5; f++) for (let L = 0; L < 6; L++) {
+      const y = 1 + 18 * f + 3 * L, wc = f === 4 ? TOP : WALL, m = new Map([[wc, new Uint8Array(N)], [GL, new Uint8Array(N)]]);
+      for (let n = 0; n < N; n++) {
+        if (!wallCell[n]) continue;
+        const x = BX + n % BW, z = BZ + Math.floor(n / BW);
+        if (f === 0 && L <= 4 && door(x, z)) continue;
+        m.get(L >= 1 && L <= 3 && !pier[n] ? GL : wc)[n] = 1;
+      }
+      lay(y, m);
+    }
+    const slab = (y, c) => { const m = inner.slice(); for (const [i, j, sx, sz] of greedyTile(m, BW, BD, 'plate')) { const o = pieceAt('plate', BX + i, BZ + j, sx, sz, y, c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); } };
+    for (let f = 1; f < 5; f++) slab(1 + 18 * f, 9);
+    const roof = new Map([[13, Uint8Array.from(wallCell, (v, n) => v || inner[n])]]); for (const [c, mm] of roof) for (const [i, j, sx, sz] of greedyTile(mm, BW, BD, 'plate')) { const o = pieceAt('plate', BX + i, BZ + j, sx, sz, 91, c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); }
+    fillRect(A, 55, 79, 10, 3, 16, 2, 'plate');
+    // 1층: 현관 로비(신발장)와 양옆 교실(칠판·책상·학생·선생님)
+    for (let i = 0; i < 5; i++) { runZSkip(A, 83, 92, 1 + 3 * i, 48, WALL, i % 2, z => z >= 86 && z <= 89); runZSkip(A, 83, 92, 1 + 3 * i, 71, WALL, i % 2, z => z >= 86 && z <= 89); }
+    for (const x of [50, 66]) for (const y of [1, 4, 7]) A(BK(1, 4), x, y, 83, 1, y === 4 ? 2 : 1);
+    for (const [x, z, r, c] of [[56, 86, 0, 2], [62, 85, 2, 10], [59, 90, 1, 1]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
+    [[23, [27, 33, 39], 29, 38], [72, [76, 82, 88], 80, 91]].forEach(([x0, xs, bx, tx], q) => {
+      for (const y of [4, 7]) A(BK(1, 8), bx, y, 92, 1, 3);
+      A('figure:시민', tx, 1, 91, 2, 14, {l: 90, r: 0});
+      xs.forEach((x, i) => [85, 89].forEach((d, k) => {
+        A('round:원형 1×1', x, 1, d, 0, 4); A(PK(2, 2), x, 4, d, 0, 9);
+        A(BK(1, 2), x, 1, d - 1, 1, [1, 0, 2][i]);
+        A('figure:시민', x, 4, d - 1, 0, [8, 10, 6, 7, 2, 1][(i * 2 + k + q) % 6], {legs: 'sit', l: (i + k) % 3 === 0 ? 150 : 40, r: 30});
+      }));
+    });
+    for (const [x, z, r, c] of [[14, 66, 0, 6], [102, 74, 2, 8], [15, 104, 1, 10]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
+    // ── 가운데 마당 놀이터: 미끄럼틀, 그네, 시소
+    for (const [x, z] of [[50, 64], [53, 64], [50, 67], [53, 67]]) A('round:기둥 1×1', x, 1, z, 0, 2);
+    A(PK(4, 4), 50, 10, 64, 0, 1); A('round:고깔 2×2', 51, 11, 65, 0, 0);
+    [[54, 7], [56, 4], [58, 1]].forEach(([x, y]) => A('slope:경사 2×2', x, y, 65, 1, 2));
+    A('figure:시민', 60, 1, 65, 3, 7, {l: 150, r: 150});
+    for (const x of [58, 65]) for (let i = 0; i < 6; i++) A(BK(1, 1), x, 1 + 3 * i, 74, 0, 0);
+    A(BK(1, 8), 58, 19, 74, 1, 1);
+    A(PK(1, 2), 60, 4, 74, 1, 2); A('figure:시민', 60, 5, 74, 0, 10, {legs: 'sit', l: 160, r: 160});
+    A(PK(1, 2), 63, 4, 74, 1, 2);
+    A(BK(1, 1), 68, 1, 69, 0, 11); A(PK(1, 8), 68, 4, 66, 0, 6);
+    A('figure:시민', 68, 5, 66, 0, 1, {legs: 'sit', l: 120, r: 120}); A('figure:시민', 68, 5, 72, 2, 14, {legs: 'sit', l: 120, r: 120});
+    for (const [x, z, r, c] of [[30, 70, 1, 0], [86, 66, 3, 3], [76, 76, 0, 2]]) A('figure:시민', x, 1, z, r, c, {legs: 'run', l: 60, r: -40});
+    // ── 운동장: 빨간 트랙, 초록 인조잔디, 골대, 축구하는 아이들, 벤치
+    for (const gx of [15, 104]) { for (const z of [28, 37]) for (let i = 0; i < 3; i++) A(BK(1, 1), gx, 1 + 3 * i, z, 0, 4); A(BK(1, 8), gx, 10, 28, 0, 4); A(BK(1, 2), gx, 10, 36, 0, 4); }
+    A('round:원형 1×1', 58, 1, 33, 0, 4);
+    for (const [x, z, r, c] of [[40, 30, 3, 0], [52, 36, 1, 1], [64, 28, 3, 0], [72, 38, 1, 1], [86, 32, 1, 0], [30, 34, 3, 1]]) A('figure:시민', x, 1, z, r, c, {legs: 'run', l: 70, r: -50});
+    for (const [x, z] of [[17, 31], [102, 32]]) A('figure:시민', x, 1, z, x < 60 ? 3 : 1, 5, {l: 90, r: 90});
+    for (let x = 24; x < 96; x += 10) A(BK(1, 6), x, 1, 56, 1, 1);
+    for (const x of [26, 46, 66]) A('figure:시민', x, 4, 56, 2, 4, {legs: 'sit', l: 120, r: 30});
+    // ── 뒤뜰: 학교 나무 배롱나무(분홍), 벤치, 화단
+    for (const [x, z] of [[26, 98], [36, 108], [48, 100], [70, 98], [82, 108], [92, 100], [28, 112], [90, 112]]) A('nature:소나무', x, 1, z, 0, PINK);
+    for (const x of [40, 76]) A(BK(1, 4), x, 1, 104, 1, 11);
+    for (let x = 50; x < 70; x += 2) { A('nature:꽃', x, 1, 96, 0, x % 4 ? 2 : 0); A('nature:꽃', x + 1, 1, 96, 0, 10); }
+    // ── 울타리, 정문, 바깥 나무
+    for (let x = 0; x + 3 < W; x += 4) { if (x + 3 < 54 || x > 65) A('build:울타리 1×4', x, 1, 8, 0, 3); A('build:울타리 1×4', x, 1, D - 1, 0, 3); }
+    for (let z = 9; z + 3 < D - 1; z += 4) { A('build:울타리 1×4', 0, 1, z, 1, 3); A('build:울타리 1×4', W - 1, 1, z, 1, 3); }
+    for (const z of [117, 118]) { A(BK(1, 1), 0, 1, z, 0, 3); A(BK(1, 1), W - 1, 1, z, 0, 3); }
+    for (const x of [54, 64]) for (let i = 0; i < 4; i++) A(BK(2, 2), x, 1 + 3 * i, 7, 0, 12);
+    for (const [x, z] of [[2, 62], [2, 80], [2, 98], [114, 62], [114, 80], [114, 98], [4, 112], [112, 112]]) A('nature:소나무', x, 1, z, 0, x % 4 === 2 ? PINK : 3);
+    for (const [x, z, r, c] of [[58, 4, 0, 1], [61, 9, 0, 10], [30, 6, 1, 14]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
