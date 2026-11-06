@@ -2179,6 +2179,7 @@ function undo() {
   else if (a.op === 'gmove') { a.to.forEach(removeBrick); a.from.forEach(b => addBrick(b, false)); }
   else if (a.op === 'drive') { for (let i = a.moves.length - 1; i >= 0; i--) { const [b, prev] = a.moves[i]; removeBrick(b); Object.assign(b, prev); b.spin = 0; addBrick(b, false); } }
   else if (a.op === 'board') { board = a.from; buildBoard(board); }
+  else if (a.op === 'place') { a.list.forEach(removeBrick); if (board !== a.boardBefore) { board = a.boardBefore; buildBoard(board); } }
   else if (a.op === 'replace') { a.after.forEach(removeBrick); if (board !== a.boardBefore) { board = a.boardBefore; buildBoard(board); } a.before.forEach(b => addBrick(b, false)); }
   changed();
 }
@@ -5221,8 +5222,61 @@ function modelThumb(m) {
     return galThumbs[m.id] = galR.domElement.toDataURL('image/jpeg', 0.82);
   } catch (e) { return ''; }
 }
+// 지금 작품 옆 빈자리 찾기: 기존 블럭 칸(둘레 2칸 여유)과 겹치지 않는 곳을 지금 판 → 더 큰 판 순서로 찾고,
+// 지금 작품 가운데에서 가장 가까운 자리를 고름. 없으면 null
+function findSpot(list) {
+  if (!bricks.length) return {dx: 0, dz: 0, board: Math.max(board, boardFor(list))};
+  let mx0 = Infinity, mx1 = -Infinity, mz0 = Infinity, mz1 = -Infinity;
+  for (const b of list) { mx0 = Math.min(mx0, b.x); mx1 = Math.max(mx1, b.x + b.w); mz0 = Math.min(mz0, b.z); mz1 = Math.max(mz1, b.z + b.d); }
+  let ex0 = Infinity, ex1 = -Infinity, ez0 = Infinity, ez1 = -Infinity;
+  for (const b of bricks) { ex0 = Math.min(ex0, b.x); ex1 = Math.max(ex1, b.x + b.w); ez0 = Math.min(ez0, b.z); ez1 = Math.max(ez1, b.z + b.d); }
+  const ecx = (ex0 + ex1) / 2, ecz = (ez0 + ez1) / 2, M = 2, mw = mx1 - mx0, md = mz1 - mz0;
+  let gap = null;
+  for (const n of BOARD_SIZES.filter(n => n >= board)) {
+    const h = n / 2, S = n + 1, occ = new Int32Array(S * S);
+    for (const b of bricks) for (let x = Math.max(-h, b.x - M); x < Math.min(h, b.x + b.w + M); x++) for (let z = Math.max(-h, b.z - M); z < Math.min(h, b.z + b.d + M); z++) occ[(z + h + 1) * S + (x + h + 1)] = 1;
+    for (let z = 1; z < S; z++) for (let x = 1; x < S; x++) occ[z * S + x] += occ[(z - 1) * S + x] + occ[z * S + x - 1] - occ[(z - 1) * S + x - 1];
+    const sum = (x0, z0, x1, z1) => occ[z1 * S + x1] - occ[z0 * S + x1] - occ[z1 * S + x0] + occ[z0 * S + x0];
+    let best = null, bd = Infinity;
+    for (let gz = 1; gz + md <= n - 1; gz++) for (let gx = 1; gx + mw <= n - 1; gx++) {
+      if (sum(gx, gz, gx + mw, gz + md)) continue;
+      const cx = gx - h + mw / 2, cz = gz - h + md / 2, ax = gx - h, az = gz - h;
+      const inside = ax < ex1 + M && ax + mw > ex0 - M && az < ez1 + M && az + md > ez0 - M;   // 다른 작품 마당 같은 틈은 되도록 피함(판을 넓히는 쪽이 먼저)
+      const d = Math.hypot(cx - ecx, cz - ecz), spot = {dx: gx - h - mx0, dz: gz - h - mz0, board: n};
+      if (!inside) { if (d < bd) { bd = d; best = spot; } }
+      else if (!gap || (gap.board === n && d < gap.d)) { if (!gap || gap.board === n) gap = Object.assign(spot, {d}); }
+    }
+    if (best) return best;
+  }
+  if (gap) { delete gap.d; return gap; }
+  return null;
+}
+function focusOn(list) {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const b of list) { x0 = Math.min(x0, b.x); x1 = Math.max(x1, b.x + b.w); z0 = Math.min(z0, b.z); z1 = Math.max(z1, b.z + b.d); }
+  const s = Math.max(24, Math.max(x1 - x0, z1 - z0) * 1.15);
+  controls.target.set((x0 + x1) / 2, 1, (z0 + z1) / 2);
+  camera.position.set(controls.target.x + s * 0.38, s * 0.42, controls.target.z + s * 0.52); controls.update();
+}
+// 예시를 지금 작품 옆 빈자리에 더하기(판이 모자라면 넓힘). 자리가 없으면 false
+function placeBeside(list, minBoard) {
+  if (!bricks.length) return false;
+  const spot = findSpot(list);
+  if (!spot) return false;
+  closePose(true); if (sel.length) setSel([]); if (fp) exitFP(); if (spinning) toggleSpin(false); settle();
+  const boardBefore = board;
+  if (spot.board !== board) { const ratio = spot.board / board; board = spot.board; buildBoard(board); camera.position.sub(controls.target).multiplyScalar(ratio).add(controls.target); }
+  list.forEach(b => { b.x += spot.dx; b.z += spot.dz; addBrick(b, false); });
+  history.push({op: 'place', list: list.slice(), boardBefore});
+  changed();
+  return {grew: board !== boardBefore};
+}
 function loadModel(m) {
-  const list = modelBricks(m); replaceScene({board: Math.max(board, boardFor(list), m.board || 0), list}); resetCam(); $('galSheet').hidden = true; stopBlueprint(true);
+  const list = modelBricks(m); $('galSheet').hidden = true; stopBlueprint(true);
+  const had = bricks.length, pl = placeBeside(list);
+  if (pl) { focusOn(list); toast(m.name + '을(를) 지금 작품 옆 빈자리에 놓았어요' + (pl.grew ? ' · 판을 ' + board + '×' + board + '로 넓혔어요' : '') + ' · 되돌리기로 빼요'); return; }
+  replaceScene({board: Math.max(board, boardFor(list), m.board || 0), list}); resetCam();
+  if (had) { toast('옆에 놓을 빈자리가 없어서 ' + m.name + '(으)로 바꿨어요 · 되돌리기로 이전 작품으로 돌아가요'); return; }
   toast(m.fig ? m.name + '을(를) 불러왔어요 · 1인칭을 누르고 안의 피규어를 누르면 들어가 볼 수 있어요 · 단면으로 속을 들여다봐요' : m.name + '을(를) 불러왔어요 · 되돌리기로 이전 작품으로 돌아가요');
 }
 // 예시 목록: 이름만 보이고, 누르면 그 항목만 펼쳐져 그림·설명·버튼이 나옴(그림은 처음 펼칠 때 그림)
@@ -5292,14 +5346,18 @@ function startBlueprint(m) {
 function startBlueprintNow(m) {
   if (fp) exitFP();
   const mlist = modelBricks(m);
-  replaceScene({board: Math.max(board, boardFor(mlist), m.board || 0), list: []});
+  const spot = bricks.length ? findSpot(mlist) : null;
+  if (spot) {   // 지금 작품은 그대로 두고 옆 빈자리에 설계도를 펼침
+    if (spot.board !== board) { history.push({op: 'board', from: board}); board = spot.board; buildBoard(board); changed(); }
+    mlist.forEach(b => { b.x += spot.dx; b.z += spot.dz; });
+  } else replaceScene({board: Math.max(board, boardFor(mlist), m.board || 0), list: []});
   const steps = planSteps(mlist);
   const ys = [...new Set(steps.map(st => st.y))].sort((a, b) => a - b);
   bp = {m, steps, ys, i: 0, total: steps.reduce((n, s) => n + s.items.length, 0), done: false, sel: null};
   document.body.classList.add('bp-on');
   $('bp').hidden = false;
   $('bpTitle').textContent = m.name + ' 설계도';
-  resetCam();
+  if (spot) focusOn(mlist); else resetCam();
   bpRefresh(true);
   toast('반투명하게 보이는 자리에 같은 블럭을 놓아 보세요');
 }
