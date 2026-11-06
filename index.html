@@ -4308,6 +4308,101 @@ const MODELS = [
     for (const [x, z, c] of [[2, 2, 3], [10, 1, 3], [24, 2, 3], [50, 1, 3], [64, 2, 3], [69, 10, 3], [69, 30, 10], [40, 44, 3], [56, 44, 3]]) A('nature:소나무', x, 1, z, 0, c);
     for (const [x, z, r, c, p] of [[2, 14, 0, 6, {legs: 'walk', l: 30, r: -30}], [2, 30, 0, 14, {l: 90, r: 0}], [30, 3, 1, 0, {legs: 'walk', l: -30, r: 30}]]) A('figure:시민', x, x >= 4 && x < BX ? 3 : 1, z, r, c, p);
   }},
+  {id: 'fsongdo', fig: true, board: 192, name: '부산 송도해수욕장', lv: '도전', desc: '우리나라 첫 공설 해수욕장. 파라솔이 늘어선 모래사장에서 계단을 올라 바다 위로 굽어 가는 구름산책로(가운데는 유리 바닥)를 걸어 거북섬까지 가 보세요. 머리 위로는 암남공원 언덕과 바다 건너 승강장을 잇는 해상케이블카가 지나가고, 바다에는 직접 몰 수 있는 보트가 떠 있어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 144, SAND = 9, CABLE = 65;
+    const shoreZ = x => 60 + Math.round(8 * ((x - 72) / 72) ** 2);
+    const hillH = (x, z) => { if (x > 25 || z > 83) return 0; let h = x < 12 ? 42 : 42 - (x - 12) * 3; if (z > 64) h -= (z - 64) * 3; return Math.max(0, h); };
+    const isleD = (x, z) => Math.hypot(x - 96, z - 15);
+    const isleH = (x, z) => { const d = isleD(x, z); return d < 6 ? 9 : d < 8 ? 6 : d < 9.5 ? 3 : 0; };
+    const pier = (x, z) => x >= 128 && x <= 143 && z >= 32 && z <= 57;
+    const ramp = (x, z) => x >= 108 && x <= 112 && z >= 64 && z <= 73;
+    const land = (x, z) => hillH(x, z) > 0 || isleH(x, z) > 0 || pier(x, z) || ramp(x, z);
+    // ── 땅: 암남공원 언덕, 거북섬, 동쪽 승강장 바위, 산책로 오르는 계단
+    groundFrom(A, 0, 0, 26, 84, hillH, (x, z) => hillH(x, z) >= 36 ? 3 : 13, 5);
+    groundFrom(A, 86, 5, 21, 21, isleH, (x, z) => isleD(x, z) < 6 ? 12 : 5, 5);
+    groundFrom(A, 128, 32, 16, 26, () => 9, () => 12, 5);
+    groundFrom(A, 108, 64, 5, 10, (x, z) => 11 - (z - 64), () => 12, 12, () => true);
+    // ── 바다(먼바다 파랑·얕은 물 하늘색·하얀 물거품)와 모래사장
+    const sea = (x, z) => z < shoreZ(x) && !land(x, z);
+    const foam = (x, z) => z === shoreZ(x) - 1 && x % 5 < 3;
+    put(coverPieces(0, 0, W, 84, 'tile', 1, (x, z) => sea(x, z) && !foam(x, z) && z < shoreZ(x) - 12));
+    put(coverPieces(0, 0, W, 84, 'tile', 8, (x, z) => sea(x, z) && !foam(x, z) && z >= shoreZ(x) - 12));
+    put(coverPieces(0, 0, W, 84, 'tile', 4, (x, z) => sea(x, z) && foam(x, z)));
+    put(coverPieces(0, 0, W, 84, 'plate', SAND, (x, z) => z >= shoreZ(x) && !land(x, z)));
+    // ── 해변 산책길·찻길·인도
+    put(coverPieces(0, 84, W, 6, 'plate', 12, () => true));
+    const dash = (x, z) => (z === 94 || z === 95) && x % 8 < 4;
+    put(coverPieces(0, 90, W, 10, 'tile', 13, (x, z) => !dash(x, z)));
+    for (let x = 0; x < W; x += 8) A('tile:2×4', x, 0, 94, 1, 4);
+    put(coverPieces(0, 100, W, 20, 'plate', 12, () => true));
+    // ── 송도구름산책로: 모래사장 계단에서 바다 위로 굽어 거북섬까지 (가운데 유리 바닥, 하얀 난간, 기둥)
+    const P = [[110, 63], [132, 40], [97, 20]], bz = t => [0, 1].map(k => (1 - t) ** 2 * P[0][k] + 2 * t * (1 - t) * P[1][k] + t * t * P[2][k]);
+    const X0 = 90, Z0 = 14, DW = 46, DD = 50, near = new Float32Array(DW * DD).fill(-1), dist = new Float32Array(DW * DD).fill(99);
+    for (let t = 0; t <= 1.0001; t += 0.004) { const [cx, cz] = bz(t); for (let j = 0; j < DD; j++) for (let i = 0; i < DW; i++) { const d = Math.hypot(X0 + i + 0.5 - cx - 0.5, Z0 + j + 0.5 - cz - 0.5); if (d < dist[j * DW + i]) { dist[j * DW + i] = d; near[j * DW + i] = t; } } }
+    const inDeck = (x, z) => { const i = x - X0, j = z - Z0; return i >= 0 && j >= 0 && i < DW && j < DD && z < 64 && dist[j * DW + i] <= 3.0; };
+    const tAt = (x, z) => near[(z - Z0) * DW + (x - X0)];
+    for (const [c, f] of [[TRANS, t => t > 0.45 && t < 0.6], [12, t => !(t > 0.45 && t < 0.6)]]) slabAt(A, X0, Z0, DW, DD, 10, 'plate', c, (x, z) => inDeck(x, z) && f(tAt(x, z)));
+    const rail = (x, z) => inDeck(x, z) && tAt(x, z) < 0.9 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !inDeck(x + a, z + b) && !ramp(x + a, z + b));
+    const rm = new Uint8Array(DW * DD); for (let j = 0; j < DD; j++) for (let i = 0; i < DW; i++) rm[j * DW + i] = rail(X0 + i, Z0 + j) ? 1 : 0;
+    for (const y of [11, 14]) for (const [i, j, sx, sz] of greedyTile(rm.slice(), DW, DD, 'brick')) { const o = pieceAt('brick', X0 + i, Z0 + j, sx, sz, y, 4); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); }
+    const pil = new Set();
+    for (let t = 0.03; t < 1; t += 0.07) { const [cx, cz] = bz(t), x = Math.round(cx), z = Math.round(cz); if (z < 64 && !isleH(x, z) && !pil.has(x + ',' + z)) { pil.add(x + ',' + z); A('round:기둥 1×1', x, 1, z, 0, 12); } }
+    // 거북섬: 거북 조각과 사람들
+    A(PK(4, 4), 94, 9, 13, 0, 12); A('round:돔 4×4', 94, 10, 13, 0, 3); A('round:원형 1×1', 95, 10, 12, 0, 3);
+    for (const [x, z] of [[93, 13], [98, 13], [93, 16], [98, 16]]) A('round:원판 1×1', x, 9, z, 0, 3);
+    for (const [x, z, r, c, p] of [[91, 17, 1, 10, {l: 90, r: 0}], [100, 12, 3, 1, {l: 45, r: 45}]]) A('figure:시민', x, 9, z, r, c, p);
+    for (const [x, z, c] of [[113, 52, 2], [124, 38, 6], [117, 30, 14]]) A('figure:시민', x, 11, z, 2, c, {legs: 'walk', l: 30, r: -30});
+    // ── 해상케이블카: 언덕 승강장 → 바다 위 철탑 둘 → 동쪽 승강장, 케이블 두 줄과 캐빈(크리스탈 캐빈은 바닥이 투명)
+    for (const z of [41, 49]) slabAt(A, 2, z, 134, 1, CABLE, 'tile', 5);
+    for (const tx of [46, 90]) { for (let i = 0; i < 7; i++) A('round:기둥 2×2', tx, 1 + 9 * i, 44, 0, 4); slabAt(A, tx, 38, 2, 14, 64, 'plate', 0); }
+    [[16, 41, 0, false], [60, 49, 1, true], [72, 41, 2, false], [104, 49, 0, true], [116, 41, 1, false]].forEach(([cx, lz, c, crystal], n) => {
+      const cz = lz - 3;
+      fillRect(A, cx, cz, 6, 6, 39, crystal ? TRANS : c, 'plate');
+      for (let i = 0; i < 5; i++) wallLayer(A, cx, cz, 6, 6, 40 + 3 * i, i === 0 || i === 4 ? c : TRANS, () => false, i % 2);
+      fillRect(A, cx, cz, 6, 6, 55, c, 'plate');
+      A('round:기둥 1×1', cx + 2, 56, lz, 0, 13);
+      A('figure:시민', cx + 2, 40, cz + 2, n % 2 ? 0 : 2, [4, 10, 2, 8, 7][n], {l: 60, r: 0});
+    });
+    // 서쪽(암남공원) 승강장: 언덕 위, 바다 쪽이 트인 건물
+    for (let i = 0; i < 6; i++) wallLayer(A, 0, 34, 12, 22, 42 + 3 * i, i === 5 ? 0 : 4, (x, z) => x === 11 && i >= 1 && i <= 4 && z >= 37 && z <= 52, i % 2);
+    fillRect(A, 0, 34, 12, 22, 60, 13, 'plate');
+    for (const [x, z] of [[2, 4], [8, 10], [3, 20], [9, 26], [2, 60], [14, 30], [5, 64]]) A('nature:소나무', x, hillH(x, z), z, 0, 3);
+    // 동쪽 승강장: 바위 위 유리 띠를 두른 높은 건물
+    for (let i = 0; i < 18; i++) wallLayer(A, 130, 36, 12, 16, 9 + 3 * i, i % 3 === 1 ? TRANS : i === 17 ? 0 : 4, (x, z) => z === 51 && i <= 4 && x >= 134 && x <= 137, i % 2);
+    A('build:문 1×4', 134, 9, 51, 0, 11);
+    fillRect(A, 130, 36, 12, 16, 63, 13, 'plate');
+    // ── 모래사장: 파라솔·수건·사람, 인명구조 망루, 물놀이
+    const UC = [0, 1, 2, 4, 6, 10];
+    for (let x = 28, n = 0; x < 132; x += 10, n++) {
+      if (x >= 100 && x <= 114) continue;
+      const z = n % 2 ? 75 : 70;
+      A('round:기둥 1×1', x + 1, 1, z + 1, 0, 4); A('round:원판 4×4', x, 10, z, 0, UC[n % 6]);
+      A('tile:2×4', x + 5, 1, z, 0, UC[(n + 3) % 6]);
+      A('figure:시민', x + 5, 2, z + 1, 2, UC[(n + 1) % 6], {legs: 'sit', l: 30, r: 30});
+    }
+    for (const [x, z] of [[70, 66], [73, 66], [70, 69], [73, 69]]) A('round:기둥 1×1', x, 1, z, 0, 4);
+    A(PK(4, 4), 70, 10, 66, 0, 0); A('figure:시민', 71, 11, 67, 0, 0, {l: 150, r: 0});
+    for (const [x, z, c, p] of [[40, 57, 8, {l: 150, r: 150}], [55, 55, 10, {l: 120, r: 30}], [64, 58, 2, {legs: 'kneel', l: 90, r: 90}], [84, 56, 6, {l: 150, r: 150}], [120, 58, 1, {l: 60, r: 120}], [134, 60, 14, {l: 150, r: 150}]])
+      A('figure:시민', x, 1, z, 2, c, p);
+    for (const [x, z, c] of [[36, 80, 3], [88, 78, 7], [126, 80, 10]]) A('figure:시민', x, 1, z, 0, c, {legs: 'walk', l: 30, r: -30});
+    // 보트(1인칭으로 선장을 누르면 바다를 달려요)
+    const bx = 30, bzz = 48;
+    A(PK(4, 8), bx, 1, bzz, 1, 4);
+    A(BK(1, 8), bx, 2, bzz, 1, 0); A(BK(1, 8), bx, 2, bzz + 3, 1, 0); A(BK(1, 2), bx, 2, bzz + 1, 0, 0); A(BK(1, 2), bx + 7, 2, bzz + 1, 0, 0);
+    A('technic:핸들', bx + 1, 2, bzz + 1, 0, 5); A('figure:시민', bx + 3, 2, bzz + 1, 1, 1, {legs: 'sit', l: 75, r: 75});
+    A('technic:모터', bx + 5, 2, bzz + 1, 0, 13);
+    // ── 산책길 가로등·벤치, 해변 호텔과 아파트
+    for (let x = 4; x < W; x += 16) { A('battle:가로등', x, 1, 85, 0, 5); A(BK(1, 4), x + 4, 1, 88, 1, 11); }
+    const HT = [24, 36, 30, 42, 27, 33], HC = [4, 9, 12, 4, 8, 9];
+    for (let i = 0; i < 6; i++) {
+      const x0 = 6 + 23 * i, z0 = 104, door = (x, z) => z === z0 && x >= x0 + 4 && x <= x0 + 7;
+      for (let l = 0; l < HT[i]; l++) wallLayer(A, x0, z0, 12, 12, 1 + 3 * l, l % 3 === 1 && l > 3 ? TRANS : l === HT[i] - 1 ? 0 : HC[i], (x, z) => l <= 4 && door(x, z), l % 2);
+      A('build:문 1×4', x0 + 4, 1, z0, 0, 11);
+      fillRect(A, x0, z0, 12, 12, 1 + 3 * HT[i], 13, 'plate');
+    }
+    for (const [x, z, r, c] of [[20, 101, 0, 4], [66, 100, 2, 0], [110, 101, 0, 1]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
