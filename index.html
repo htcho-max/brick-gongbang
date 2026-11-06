@@ -132,19 +132,26 @@ body.fp .tray,body.fp .top,body.fp .benchbar{display:none!important}
 .slots .empty{font-size:13px;color:var(--muted);padding:18px 4px;text-align:center}
 .file-row{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
 .file-row button,.filebtn{height:38px;display:inline-flex;align-items:center;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:700;padding:0 12px;cursor:pointer}
-.gal-card{width:min(760px,100%)}
-.gal{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;gap:12px;overflow-y:auto;min-height:0}
-.gcard{border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-width:0}
-.gcard img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--sky);display:block;border-radius:13px 13px 0 0}
-.gcard .gbody{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1}
-.gcard h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:19px;display:flex;align-items:center;gap:8px}
-.gcard .lv{font-family:var(--f-body);font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--sky);color:var(--ink)}
+.gal-card{width:min(600px,100%)}
+.gal{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0}
+.gsec{font-size:12px;font-weight:700;color:var(--muted);padding:10px 4px 2px;letter-spacing:.02em}
+.gcard{border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;min-width:0;flex:none}
+.gcard.open{border-color:var(--ink)}
+.ghead{display:flex;align-items:center;gap:8px;width:100%;min-height:46px;background:none;border:0;padding:8px 12px;text-align:left;cursor:pointer;font:inherit;color:var(--ink);border-radius:12px}
+.ghead:hover{background:var(--sky)}
+.ghead .gname{font-family:var(--f-display);font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ghead .chev{flex:none;font-size:14px;color:var(--muted);transition:transform .18s}
+.gcard.open .chev{transform:rotate(90deg)}
+.gcard img{width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--sky);display:block;border-radius:10px}
+.gcard .gbody{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+.gcard .gbody[hidden]{display:none}
+.gcard .lv{font-family:var(--f-body);font-size:11px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--sky);color:var(--ink);flex:none}
 .gcard .lv.hard{background:#fde2dd;color:#8a1606}
 .gcard .lv.fig{background:#fff2c4;color:#6a4b00}
 .gcard .lv.easy{background:#e1f3df;color:#1d5a26}
 .gcard p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5}
 .gcard .gmeta{font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
-.gcard .gacts{display:flex;gap:6px;margin-top:auto;flex-wrap:wrap}
+.gcard .gacts{display:flex;gap:6px;flex-wrap:wrap}
 .gcard .gacts button{height:34px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:12.5px;font-weight:700;padding:0 12px;cursor:pointer}
 .gcard .gacts button.primary{height:34px;border:0;background:var(--danger);color:#fff}
 .bp[hidden]{display:none}
@@ -4609,6 +4616,48 @@ const MODELS = [
     for (const [i, j, c] of [[2, 3, 2], [6, 5, 10], [8, 8, 1]]) A('figure:시민', QX + 1 + 3 * i, 1, QZ + 1 + 3 * j, 0, c, {legs: 'walk', l: 60, r: -30});
     A('figure:시민', QX + 5, 1, QZ - 3, 0, 6, {l: 90, r: 0});
   }},
+  {id: 'fhanok', fig: true, name: '북촌 한옥마을', lv: '도전', desc: '비탈을 따라 기와지붕이 층층이 이어지는 한옥 골목. 돌 축대 사이 오르막 골목을 걸으며 대문으로 들어가면 장독대와 감나무가 있는 마당, ㄱ자로 꺾인 안채와 사랑채가 나와요. 한복 입은 사람들 사이로 골목 끝까지 올라가 보세요.', build(A) {
+    const W = 96, D = 112, WOOD = 11, PL = 4, ROOF = 13, ST = 12, YARD = 9;
+    const lotH = z => 3 + 6 * Math.floor(z / 16), alleyH = z => 3 + Math.round(6 * z / 16);
+    const isAlley = x => x >= 42 && x <= 53;
+    groundFrom(A, 0, 0, W, D, (x, z) => isAlley(x) ? alleyH(z) : lotH(z), (x, z) => isAlley(x) ? ST : (x < 4 || x > 91) ? 3 : YARD, ST, (x) => isAlley(x));
+    const POT = 11, HB = [10, 0, 14, 8, 2, 4];
+    for (let k = 0; k < 7; k++) for (const west of [true, false]) {
+      const z0 = 16 * k, H = lotH(z0), lx0 = west ? 4 : 54, lx1 = lx0 + 37, n = k * 2 + (west ? 0 : 1);
+      const X = (u, len = 1) => west ? lx1 - u - len + 1 : lx0 + u, gx = X(0);
+      // 담장(돌 아랫단 + 흰 윗단 + 기와 타일), 대문
+      const gate = (x, z) => x === gx && z >= z0 + 2 && z <= z0 + 5, post = (x, z) => x === gx && (z === z0 + 1 || z === z0 + 6);
+      for (let i = 0; i < 2; i++) wallLayer(A, lx0, z0, 38, 16, H + 3 * i, i ? PL : ST, gate, i % 2);
+      slabAt(A, lx0, z0, 38, 16, H + 6, 'tile', ROOF, (x, z) => (x === lx0 || x === lx1 || z === z0 || z === z0 + 15) && !gate(x, z) && !post(x, z));
+      for (const z of [z0 + 1, z0 + 6]) for (let i = 0; i < 3; i++) A(BK(1, 1), gx, H + 6 + 3 * i, z, 0, WOOD);
+      A(BK(1, 6), gx, H + 15, z0 + 1, 0, WOOD);
+      for (const z of [z0 + 1, z0 + 3, z0 + 5]) A('slope:용마루 2×2', west ? gx : gx - 1, H + 18, z, 1, ROOF);
+      // 안채(골목 반대쪽, 길이가 z 방향)와 사랑채(뒤쪽, 길이가 x 방향): ㄱ자
+      const aX = X(28, 8), bX = X(16, 12);
+      fillRect(A, aX, z0 + 2, 8, 12, H, ST); fillRect(A, bX, z0 + 8, 12, 6, H, ST);
+      const aIn = X(28), aDoor = (x, z) => x === aIn && z >= z0 + 4 && z <= z0 + 7, aWin = (x, z) => x === aIn && z >= z0 + 9 && z <= z0 + 12;
+      const bDoorX = X(18, 4), bWinX = X(23, 4), bDoor = (x, z) => z === z0 + 8 && x >= bDoorX && x <= bDoorX + 3, bWin = (x, z) => z === z0 + 8 && x >= bWinX && x <= bWinX + 3;
+      for (let i = 0; i < 5; i++) {
+        const c = i === 0 || i === 4 ? WOOD : PL;
+        wallLayer(A, aX, z0 + 2, 8, 12, H + 3 + 3 * i, c, (x, z) => (i <= 4 && aDoor(x, z)) || (i >= 1 && i <= 3 && aWin(x, z)), i % 2);
+        wallLayer(A, bX, z0 + 8, 12, 6, H + 3 + 3 * i, c, (x, z) => (i <= 4 && bDoor(x, z)) || (i >= 1 && i <= 3 && bWin(x, z)), (i + 1) % 2);
+      }
+      A('build:문 1×4', aIn, H + 3, z0 + 4, 1, WOOD); A('build:창문 1×4', aIn, H + 6, z0 + 9, 1, WOOD);
+      A('build:문 1×4', bDoorX, H + 3, z0 + 8, 0, WOOD); A('build:창문 1×4', bWinX, H + 6, z0 + 8, 0, WOOD);
+      gableRoofZ(A, X(27, 10), z0 + 1, 10, 14, H + 18, ROOF);
+      gableRoofX(A, X(15, 12), z0 + 7, 12, 8, H + 18, ROOF);
+      // 마당: 장독대, 감나무, 사람
+      for (const [u, dz] of [[3, 12], [5, 12], [7, 12], [4, 10], [6, 10]]) A('round:원형 1×1', X(u), H, z0 + dz, 0, POT);
+      A('round:원형 2×2', X(9, 2), H, z0 + 12, 0, POT); A('round:원판 2×2', X(9, 2), H + 3, z0 + 12, 0, POT);
+      A('nature:소나무', X(12, 2), H, z0 + 11, 0, n % 3 === 0 ? 3 : 6);
+      if (n % 2 === 0) A('figure:시민', X(8, 2), H, z0 + 5, west ? 1 : 3, HB[n % 6], {l: 30, r: 30, h: 20});
+      if (n % 3 === 1) A('figure:시민', X(20, 2), H, z0 + 4, 0, HB[(n + 2) % 6], {legs: 'sit', l: 45, r: 45});
+    }
+    // 가장자리 나무, 골목의 한복 입은 사람들
+    for (let z = 4; z < D; z += 10) { A('nature:소나무', 1, lotH(z), z, 0, z % 3 ? 3 : 6); A('nature:소나무', 93, lotH(z), z, 0, z % 4 ? 3 : 10); }
+    for (const [x, z, r, c, p] of [[45, 6, 0, 10, 'walk'], [49, 20, 2, 0, 'walk'], [46, 34, 0, 14, 'walk'], [50, 46, 0, 8, ''], [44, 58, 2, 2, 'walk'], [48, 72, 0, 10, 'walk'], [51, 84, 2, 1, 'walk'], [45, 98, 0, 0, '']])
+      A('figure:시민', x, Math.max(alleyH(z), alleyH(z)), z, r, c, p ? {legs: 'walk', l: 30, r: -30} : {l: 120, r: 120, h: -15});
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
@@ -4971,34 +5020,50 @@ function modelThumb(m) {
     return galThumbs[m.id] = galR.domElement.toDataURL('image/jpeg', 0.82);
   } catch (e) { return ''; }
 }
+function loadModel(m) {
+  const list = modelBricks(m); replaceScene({board: Math.max(board, boardFor(list), m.board || 0), list}); resetCam(); $('galSheet').hidden = true; stopBlueprint(true);
+  toast(m.fig ? m.name + '을(를) 불러왔어요 · 1인칭을 누르고 안의 피규어를 누르면 들어가 볼 수 있어요 · 단면으로 속을 들여다봐요' : m.name + '을(를) 불러왔어요 · 되돌리기로 이전 작품으로 돌아가요');
+}
+// 예시 목록: 이름만 보이고, 누르면 그 항목만 펼쳐져 그림·설명·버튼이 나옴(그림은 처음 펼칠 때 그림)
+function galToggle(li) {
+  const ul = $('gal'), open = !li.classList.contains('open');
+  for (const o of ul.querySelectorAll('.gcard.open')) { o.classList.remove('open'); o._body.hidden = true; o._head.setAttribute('aria-expanded', 'false'); }
+  if (!open) return;
+  li.classList.add('open'); li._body.hidden = false; li._head.setAttribute('aria-expanded', 'true');
+  requestAnimationFrame(() => li.scrollIntoView({block: 'nearest', behavior: 'smooth'}));
+  if (!li._done) setTimeout(() => {
+    li._done = true;
+    li._img.src = modelThumb(li._m);
+    const {n, steps} = modelInfo(li._m); li._meta.textContent = '블럭 ' + n.toLocaleString('ko-KR') + '개 · 설계도 ' + steps + '단계';
+    requestAnimationFrame(() => li.scrollIntoView({block: 'nearest', behavior: 'smooth'}));
+  }, 30);
+}
 function openGallery() {
   const ul = $('gal');
   if (!ul.childElementCount) {
-    for (const m of MODELS) {
+    let sec = null;
+    for (const m of [...MODELS.filter(m => m.fig), ...MODELS.filter(m => !m.fig)]) {
+      const s = m.fig ? '피규어 크기 — 안에 들어가 걸어 다닐 수 있어요' : '미니·축소 모형';
+      if (s !== sec) { sec = s; const h = document.createElement('li'); h.className = 'gsec'; h.textContent = s; ul.appendChild(h); }
       const li = document.createElement('li'); li.className = 'gcard';
+      const head = document.createElement('button'); head.className = 'ghead'; head.setAttribute('aria-expanded', 'false');
+      const nm = document.createElement('span'); nm.className = 'gname'; nm.textContent = m.name;
+      const lv = document.createElement('span'); lv.className = 'lv' + (m.lv === '어려움' || m.lv === '도전' ? ' hard' : m.lv === '쉬움' ? ' easy' : ''); lv.textContent = m.lv;
+      const chev = document.createElement('span'); chev.className = 'chev'; chev.textContent = '▶'; chev.setAttribute('aria-hidden', 'true');
+      head.append(nm, lv, chev);
+      const body = document.createElement('div'); body.className = 'gbody'; body.hidden = true;
       const img = document.createElement('img'); img.alt = m.name + ' 완성 모습';
-      const body = document.createElement('div'); body.className = 'gbody';
-      const h = document.createElement('h3'); h.textContent = m.name;
-      if (m.fig) { const fb = document.createElement('span'); fb.className = 'lv fig'; fb.textContent = '피규어 크기'; h.appendChild(fb); }
-      const lv = document.createElement('span'); lv.className = 'lv' + (m.lv === '어려움' || m.lv === '도전' ? ' hard' : m.lv === '쉬움' ? ' easy' : ''); lv.textContent = m.lv; h.appendChild(lv);
-      const meta = document.createElement('span'); meta.className = 'gmeta'; meta.textContent = '블럭 수 세는 중…'; li._meta = meta;
+      const meta = document.createElement('span'); meta.className = 'gmeta'; meta.textContent = '그림 그리는 중…';
       const ds = document.createElement('p'); ds.textContent = m.desc;
       const acts = document.createElement('div'); acts.className = 'gacts';
       const b1 = document.createElement('button'); b1.className = 'primary'; b1.textContent = '설계도로 만들기'; b1.addEventListener('click', () => startBlueprint(m));
-      const b2 = document.createElement('button'); b2.textContent = '완성품 불러오기'; b2.addEventListener('click', () => {
-        const list = modelBricks(m); replaceScene({board: Math.max(board, boardFor(list), m.board || 0), list}); resetCam(); $('galSheet').hidden = true; stopBlueprint(true);
-        toast(m.fig ? m.name + '을(를) 불러왔어요 · 1인칭을 누르고 안의 피규어를 누르면 들어가 볼 수 있어요 · 단면으로 속을 들여다봐요' : m.name + '을(를) 불러왔어요 · 되돌리기로 이전 작품으로 돌아가요');
-      });
-      acts.append(b1, b2); body.append(h, meta, ds, acts); li.append(img, body); ul.appendChild(li);
-      li._img = img; li._m = m;
+      const b2 = document.createElement('button'); b2.textContent = '완성품 불러오기'; b2.addEventListener('click', () => loadModel(m));
+      acts.append(b1, b2); body.append(img, meta, ds, acts); li.append(head, body); ul.appendChild(li);
+      Object.assign(li, {_img: img, _meta: meta, _m: m, _body: body, _head: head});
+      head.addEventListener('click', () => galToggle(li));
     }
   }
   $('galSheet').hidden = false;
-  // 썸네일은 열린 뒤 하나씩 그려서 시트가 바로 뜨게
-  [...ul.children].forEach((li, i) => setTimeout(() => {
-    if (!li._img.src) li._img.src = modelThumb(li._m);
-    const {n, steps} = modelInfo(li._m); li._meta.textContent = '블럭 ' + n.toLocaleString('ko-KR') + '개 · 설계도 ' + steps + '단계';
-  }, 40 + i * 60));
 }
 $('btnGal').addEventListener('click', openGallery);
 $('galClose').addEventListener('click', () => { $('galSheet').hidden = true; });
