@@ -5093,6 +5093,47 @@ const MODELS = [
     for (const [x, c] of [[8, 0], [30, 4], [50, 1]]) { A(BK(1, 2), x, 1, 25, 1, c); A(PK(1, 1), x, 4, 25, 0, TRANS); }
     A(PK(4, 8), 24, 1, 6, 1, 4); A(BK(2, 4), 26, 2, 7, 1, 4); A(PK(2, 4), 26, 5, 7, 1, 1);
   }},
+  {id: 'lotte', name: '잠실 롯데월드타워 축소 모형', lv: '어려움', desc: '높이 555m, 123층. 둥근 네모 바닥에서 위로 갈수록 부드럽게 가늘어지고, 네 모서리를 따라 어두운 이음매가 꼭대기까지 이어져요. 맨 위는 철골 격자(다이아그리드)로 뚫린 첨탑. 판 높이를 거의 다 써서 1플레이트 ≈ 2.4m로 담았고, 아래 쇼핑몰과 석촌호수 쪽 산책로도 있어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 64, D = 64, CX = 32, CZ = 34, GL = 4, SEAM = 13, N = 40;
+    // 바닥: 광장, 잔디, 길, 석촌호수
+    const lake = (x, z) => Math.hypot((x - 32) / 30, (z - 4) / 7) < 1 && z < 10;
+    put(coverPieces(0, 0, W, D, 'tile', 8, lake));
+    put(coverPieces(0, 0, W, D, 'plate', 3, (x, z) => !lake(x, z) && z < 14));
+    put(coverPieces(0, 14, W, 4, 'tile', 13, () => true));
+    put(coverPieces(0, 18, W, D - 18, 'plate', 12, () => true));
+    for (let x = 4; x < W; x += 7) { A('round:원형 1×1', x, 1, 12, 0, 11); A('round:고깔 1×1', x, 4, 12, 0, (x % 3) ? 3 : 10); }
+    // 아래 쇼핑몰(낮고 넓은 건물): 유리 띠와 베이지 벽
+    const mall = (x, z) => x >= 6 && x <= 57 && z >= 22 && z <= 60;
+    const towerFoot = (x, z) => Math.pow(Math.abs(x + 0.5 - CX) / 9, 4) + Math.pow(Math.abs(z + 0.5 - CZ) / 9, 4) <= 1;
+    for (let k = 0; k < 4; k++) wallLayer(A, 6, 22, 52, 39, 1 + 3 * k, k === 1 || k === 2 ? TRANS : 9, () => false, k % 2);
+    slabAt(A, 6, 22, 52, 39, 13, 'plate', 12, (x, z) => mall(x, z) && !towerFoot(x, z));
+    // 탑: 층(브릭 한 단)마다 둥근 네모(초타원)의 크기를 줄이며 겉 칸만 쌓음. 대각선 가까운 칸은 어두운 이음매
+    const shell = (hs, y, seamOnly, colorAt, hsNext = 0) => {   // hsNext: 바로 위 단 크기 — 위 단이 덮지 않는 턱은 채움
+      const S = 20, m0 = new Map();
+      const inside = (i, j) => Math.pow(Math.abs(i + 0.5 - S / 2) / hs, 4) + Math.pow(Math.abs(j + 0.5 - S / 2) / hs, 4) <= 1;
+      for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+        if (!inside(i, j)) continue;
+        const insN = Math.pow(Math.abs(i + 0.5 - S / 2) / hsNext, 4) + Math.pow(Math.abs(j + 0.5 - S / 2) / hsNext, 4) <= 1;
+        const edge = !inside(i - 1, j) || !inside(i + 1, j) || !inside(i, j - 1) || !inside(i, j + 1) || (hsNext > 0 && !insN);
+        if (!edge) continue;
+        const dx = Math.abs(i + 0.5 - S / 2), dz = Math.abs(j + 0.5 - S / 2), seam = Math.abs(dx - dz) < 1.1;
+        if (seamOnly && !seam && (i + j + y) % 3) continue;
+        const c = colorAt(seam);
+        if (!m0.has(c)) m0.set(c, new Uint8Array(S * S));
+        m0.get(c)[j * S + i] = 1;
+      }
+      for (const [c, m] of m0) for (const [i, j, sx, sz] of greedyTile(m, S, S, 'brick')) { const o = pieceAt('brick', CX - S / 2 + i, CZ - S / 2 + j, sx, sz, y, c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); }
+    };
+    const L = 70;
+    for (let k = 0; k < L; k++) {
+      const hsAt = q => 9 - 5.2 * Math.pow(q / (L - 1), 1.6), hs = hsAt(k);
+      shell(hs, 13 + 3 * k, false, seam => seam ? SEAM : k % 6 === 5 ? 12 : GL, k < L - 1 ? hsAt(k + 1) : 0.01);
+    }
+    // 꼭대기 첨탑: 철골 격자처럼 뚫린 단 4개 + 가운데 기둥
+    for (let k = 0; k < 4; k++) shell(3.6 - 0.5 * k, 13 + 3 * (L + k), true, () => 12);
+    A('round:기둥 1×1', CX, 13 + 3 * L, CZ, 0, 12); A('round:원판 1×1', CX, 13 + 3 * L + 9, CZ, 0, 4);
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
