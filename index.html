@@ -5035,6 +5035,64 @@ const MODELS = [
     for (const [x, z] of [[2, 62], [2, 80], [2, 98], [114, 62], [114, 80], [114, 98], [4, 112], [112, 112]]) A('nature:소나무', x, 1, z, 0, x % 4 === 2 ? PINK : 3);
     for (const [x, z, r, c] of [[58, 4, 0, 1], [61, 9, 0, 10], [30, 6, 1, 14]]) A('figure:시민', x, 1, z, r, c, {legs: 'walk', l: 30, r: -30});
   }},
+  {id: 'ddp', name: '동대문디자인플라자(DDP) 축소 모형', lv: '어려움', desc: '은빛 알루미늄 패널로 덮인 물결 같은 건물. 땅에서 지붕까지 이어지는 잔디 언덕을 따라 올라가 보세요. 옆 역사문화공원에는 옛 서울 성곽과 이간수문, 옛 운동장 조명탑 둘, 하얀 LED 장미 정원이 있어요.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 96, D = 72;
+    const lobe = (x, z, cx, cz, rx, rz) => Math.hypot((x - cx) / rx, (z - cz) / rz);
+    const shellH = (d, h) => d >= 1 ? 0 : h * Math.sqrt(1 - Math.pow(d, 4));
+    const hillD = (x, z) => lobe(x, z, 38, 52, 18, 11);
+    const Hf = (x, z) => {
+      let h = Math.max(shellH(lobe(x, z, 56, 30, 30, 15), 30), shellH(lobe(x, z, 81, 46, 14, 13), 24), shellH(lobe(x, z, 66, 52, 12, 9), 21));
+      const dh = hillD(x, z);
+      if (dh < 1) h = Math.max(h, Math.min(21, Math.max(0, (x - 21) * 1.0)) * Math.min(1, (1 - dh) * 4));   // 서쪽 땅에서 지붕까지 오르는 잔디 언덕
+      return Math.round(h);
+    };
+    const topC = (x, z) => { if (hillD(x, z) < 1 && Hf(x, z) <= 21 && Math.max(shellH(lobe(x, z, 56, 30, 30, 15), 30), shellH(lobe(x, z, 66, 52, 12, 9), 21)) < Hf(x, z) + 0.5 && x < 50) return 3;
+      return Math.floor((x * 2 + z) / 5) % 4 === 0 ? 4 : Math.floor((x - z * 2) / 7) % 5 === 0 ? 13 : 12; };
+    // 바닥: 광장(회색), 공원(풀)
+    put(coverPieces(0, 0, W, D, 'plate', 12, (x, z) => x >= 18 && !Hf(x, z)));
+    const ditch = (x, z) => x >= 5 && x <= 10 && z >= 30 && z <= 37;
+    put(coverPieces(0, 0, W, D, 'plate', 3, (x, z) => x < 18 && !ditch(x, z)));
+    groundFrom(A, 18, 0, W - 18, D, (x, z) => { const h = Hf(x, z); return h ? h + 1 : 0; }, topC, 12);
+    // 역사문화공원: 서울 성곽(구불구불) + 이간수문 + 조명탑 + LED 장미
+    const wx = z => 7 + Math.round(3 * Math.sin(z / 11));
+    for (let z = 2; z < D - 2; z++) {
+      const x = wx(z);
+      if (z >= 32 && z <= 35) { if (z === 32) { A('build:아치 1×4', x, 1, 32, 1, 12); A('build:아치 1×4', x + 1, 1, 32, 1, 12); for (const xx of [x, x + 1]) A(BK(1, 4), xx, 4, 32, 0, 12); } continue; }
+      for (const y of [1, 4]) A(BK(1, 2), x, y, z, 1, 12);
+      A(PK(1, 2), x, 7, z, 1, z % 2 ? 13 : 12);
+    }
+    put(coverPieces(5, 30, 6, 8, 'tile', 1, (x, z) => x < wx(z) || x > wx(z) + 1 || (z >= 32 && z <= 35)));
+    for (const z of [10, 60]) { for (let i = 0; i < 5; i++) A('round:기둥 1×1', 14, 1 + 9 * i, z, 0, 4); A(PK(2, 2), 14, 46, z, 0, 4); A(BK(1, 2), 14, 47, z, 1, 4); }
+    for (let x = 1; x < 17; x++) for (let z = 40; z < 56; z++) if ((x * 3 + z * 5) % 4 === 0 && (x < wx(z) - 1 || x > wx(z) + 2)) A('round:원판 1×1', x, 1, z, 0, (x + z) % 5 ? 4 : 10);
+    for (const [x, z] of [[2, 6], [13, 20], [2, 24], [14, 30], [3, 62], [15, 66]]) { A('round:원형 1×1', x, 1, z, 0, 11); A('round:고깔 1×1', x, 4, z, 0, 3); }
+  }},
+  {id: 'f63', name: '여의도 63빌딩 축소 모형', lv: '어려움', desc: '한강 가에 선 황금빛 유리 빌딩. 판 높이를 거의 다 써서(1플레이트 ≈ 1m) 실제 높이 약 249m를 그대로 담았어요. 한쪽이 위로 갈수록 좁아지는 모양, 옆 낮은 건물, 강변 공원과 유람선까지.', build(A) {
+    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
+    const W = 64, D = 64, GOLD = 2, BAND = 9;
+    put(coverPieces(0, 0, W, 16, 'tile', 1, (x, z) => (x * 5 + z * 3) % 13 !== 0));
+    put(coverPieces(0, 0, W, 16, 'tile', 8, (x, z) => (x * 5 + z * 3) % 13 === 0));
+    put(coverPieces(0, 16, W, 8, 'plate', 3, () => true));
+    put(coverPieces(0, 24, W, 4, 'tile', 13, () => true));
+    put(coverPieces(0, 28, W, 36, 'plate', 12, () => true));
+    // 본관: 왼쪽 벽은 곧게, 오른쪽 벽은 위로 갈수록 안으로 좁아짐. 79단(237플레이트) + 지붕
+    const L = 79, X0 = 18, Z0 = 34, DD = 12;
+    for (let k = 0; k < L; k++) {
+      const xR = 41 - Math.floor(9 * k / (L - 1)), w = xR - X0 + 1, top = k >= L - 3;
+      const dz = top ? (k - (L - 3) + 1) : 0;
+      wallLayer(A, X0, Z0 + dz, w, DD - 2 * dz, 1 + 3 * k, top ? 13 : k % 4 === 3 ? BAND : GOLD, () => false, k % 2);
+    }
+    fillRect(A, X0, Z0 + 3, 41 - 9 - X0 + 1, DD - 6, 1 + 3 * L, 13, 'plate');
+    // 1층 입구 유리
+    for (const x of [24, 28]) A(BK(1, 4), x, 1, Z0 - 1, 1, TRANS);
+    // 옆 낮은 건물(4층)
+    for (let k = 0; k < 6; k++) wallLayer(A, 42, 30, 14, 18, 1 + 3 * k, k % 3 === 2 ? BAND : GOLD, () => false, k % 2);
+    fillRect(A, 42, 30, 14, 18, 19, 13, 'plate');
+    // 강변 공원 나무, 길 위 작은 차, 한강 유람선
+    for (let x = 2; x < W; x += 6) { A('round:원형 1×1', x, 1, 19, 0, 11); A('round:고깔 1×1', x, 4, 19, 0, (x / 6) % 3 ? 3 : 10); }
+    for (const [x, c] of [[8, 0], [30, 4], [50, 1]]) { A(BK(1, 2), x, 1, 25, 1, c); A(PK(1, 1), x, 4, 25, 0, TRANS); }
+    A(PK(4, 8), 24, 1, 6, 1, 4); A(BK(2, 4), 26, 2, 7, 1, 4); A(PK(2, 4), 26, 5, 7, 1, 1);
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
