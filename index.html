@@ -109,8 +109,9 @@ body.fp .fpbar{display:flex}
 body.fp .fpdot{display:block}
 body.fp .tray,body.fp .top,body.fp .benchbar{display:none!important}
 body.fp.fpbuild .tray{display:flex!important}
-.fpbar #fpBuild{display:none}
-body.fpwalk .fpbar #fpBuild{display:block}
+.fpbar #fpBuild,.fpbar #fpRun{display:none}
+body.fpwalk .fpbar #fpBuild,body.fpwalk .fpbar #fpRun{display:block}
+.fpbar #fpRun[data-lv="1"]{background:#ffe9a8}.fpbar #fpRun[data-lv="2"]{background:#ffb27a}
 .fpbar #fpBuild[aria-pressed="true"]{background:var(--accent,#ffcf3a);color:var(--ink)}
 @media (max-width:640px){.fpbar{gap:8px;padding:6px 6px 6px 12px}.fpbar button{padding:8px 10px}.fptext b{font-size:15px;white-space:nowrap}body.fpbuild .fptext span{display:none}}
 .sheet[hidden]{display:none}
@@ -358,6 +359,7 @@ body.fp .bp{display:none!important}
 <div class="toast" id="toast"></div>
 <div class="fpbar" id="fpbar">
   <div class="fptext"><b id="fpLabel">1인칭 시점</b><span id="fpHelp">드래그로 둘러보기</span></div>
+  <button id="fpRun" data-lv="0" title="걷는 빠르기 (G)">🚶 걷기</button>
   <button id="fpBuild" aria-pressed="false">🧱 짓기</button>
   <button id="fpExit">나가기 <kbd>Esc</kbd></button>
 </div>
@@ -2475,6 +2477,7 @@ addEventListener('keydown', e => {
     if (k === 'escape' && held) { endHold(null, false); return; }
     if (k === 'escape' || k === 'p') exitFP(); else if (k === 'v') cycleSpeed();
     else if (fp.walk && k === 'f') setFPBuild(!fpBuild);
+    else if (fp.walk && k === 'g') cycleRun();
     else if (fpBuild) {
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
       else if (e.key === 'Shift') { shiftHeld = true; if (lastPointer) updateHover(...lastPointer); }
@@ -3384,6 +3387,14 @@ initStore();
 // ---- 1인칭 시점: 피규어 눈높이로 걷기, 자동차에 탄 피규어로 운전
 // ---- 1인칭 짓기: 🧱 짓기를 켜면 부품 서랍이 나오고, 화면을 누르면(끌지 않고) 지금 도구대로 놓기·빼기·옮기기·자세
 let fpBuild = false, fpHoverTick = 0;
+// ---- 1인칭 빠르기: 걷기 1× → 달리기 2× → 질주 4× (넓은 예시를 둘러볼 때)
+const RUNS = [[1, '🚶 걷기'], [2, '🏃 달리기'], [4, '⚡ 질주']];
+let runLv = 0;
+function cycleRun() {
+  runLv = (runLv + 1) % RUNS.length;
+  const b = $('fpRun'); b.dataset.lv = runLv; b.firstChild.textContent = RUNS[runLv][1];
+  toast(RUNS[runLv][1] + ' · ' + RUNS[runLv][0] + '배 빠르기');
+}
 function setFPBuild(on) {
   fpBuild = !!on && !!(fp && fp.walk);
   document.body.classList.toggle('fpbuild', fpBuild);
@@ -3400,6 +3411,7 @@ function placeDrivepad() {   // 짓기 서랍과 겹치지 않게 이동 버튼�
 }
 addEventListener('resize', () => { if (fpBuild) placeDrivepad(); });
 $('fpBuild').addEventListener('click', () => setFPBuild(!fpBuild));
+$('fpRun').addEventListener('click', cycleRun);
 function fpTap(e) {
   const cx = e.clientX, cy = e.clientY;
   if (mode === 'move') {
@@ -3474,7 +3486,7 @@ function enterFP(b) {
   document.body.classList.add('fp');
   const v = vehMap.get(target), touch = matchMedia('(pointer: coarse)').matches;
   $('fpLabel').textContent = (inCar ? '운전석 · ' : '') + t.name + ' 시점';
-  $('fpHelp').textContent = fp.walk ? (touch ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프')
+  $('fpHelp').textContent = fp.walk ? (touch ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기')
     : inCar && v && v.fly ? (v.steer ? (touch ? '▲ 속도 · ◀▶ 방향 · 상승 버튼을 누르는 동안 떠올라요' : 'W 속도 · A/D 방향 · 스페이스를 누르는 동안 떠올라요(떼면 천천히 내려와요)') : '비행기가 날아요 · 드래그로 둘러보기')
     : inCar ? (v && v.steer ? (touch ? '오른쪽 버튼으로 운전 · 끌어서 둘러보기' : '방향키·WASD로 운전 · 드래그로 둘러보기') : '자동차가 달려요 · 드래그로 둘러보기')
     : '드래그로 둘러보기';
@@ -3565,7 +3577,7 @@ function walkStep(f, dt) {
   let mx = fw[0] * ctrl.throttle - rt[0] * ctrl.steer, mz = fw[1] * ctrl.throttle - rt[1] * ctrl.steer;
   const ml = Math.hypot(mx, mz);
   if (ml > 1e-6) {
-    const s = 3.2 * speedMul * dt * (ctrl.throttle < 0 && !ctrl.steer ? 0.7 : 1);
+    const s = 3.2 * RUNS[runLv][0] * speedMul * dt * (ctrl.throttle < 0 && !ctrl.steer ? 0.7 : 1);
     mx = mx / ml * s; mz = mz / ml * s;
     // 그대로 → 벽을 따라 미끄러지기(한 축씩) → 조금 비켜 가기(±25°·±50°): 모서리에 살짝 걸리는 정도는 지나감
     const tries = [[mx, mz], [mx, 0], [0, mz]];
