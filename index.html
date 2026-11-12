@@ -113,7 +113,7 @@ body.fp.fpbuild .tray{display:flex!important}
 body.fpwalk .fpbar #fpBuild,body.fpwalk .fpbar #fpRun{display:block}
 .fpbar #fpRun[data-lv="1"]{background:#ffe9a8}.fpbar #fpRun[data-lv="2"]{background:#ffb27a}
 .fpbar #fpBuild[aria-pressed="true"]{background:var(--accent,#ffcf3a);color:var(--ink)}
-@media (max-width:640px){.fpbar{gap:8px;padding:6px 6px 6px 12px}.fpbar button{padding:8px 10px}.fptext b{font-size:15px;white-space:nowrap}body.fpbuild .fptext span{display:none}}
+@media (max-width:640px){.fpbar{gap:6px;padding:6px 6px 6px 12px}.fpbar button{padding:8px 8px}.fptext b{font-size:15px;white-space:nowrap}.fptext span{display:none}.fpbar kbd{display:none}}
 .play-card{width:min(640px,100%)}
 .play-scroll{overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding-right:2px}
 .play-scroll h3{margin:4px 0 0;font-size:14px;display:flex;gap:6px;align-items:baseline}
@@ -390,6 +390,7 @@ body.fp .bp{display:none!important}
 <div class="fpbar" id="fpbar">
   <div class="fptext"><b id="fpLabel">1인칭 시점</b><span id="fpHelp">드래그로 둘러보기</span></div>
   <button id="fpRun" data-lv="0" title="걷는 빠르기 (G)">🚶 걷기</button>
+  <button id="fpFire" title="불꽃놀이 (K)">🎆 불꽃</button>
   <button id="fpBuild" aria-pressed="false">🧱 짓기</button>
   <button id="fpExit">나가기 <kbd>Esc</kbd></button>
 </div>
@@ -2757,6 +2758,8 @@ addEventListener('keydown', e => {
     if (k === 'escape' || k === 'p') exitFP(); else if (k === 'v') cycleSpeed();
     else if (fp.walk && k === 'f') setFPBuild(!fpBuild);
     else if (fp.walk && k === 'g') cycleRun();
+    else if (k === 'k') fpFireworks();
+    else if (k === 'n') $('btnNight').click();
     else if (fpBuild) {
       if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
       else if (e.key === 'Shift') { shiftHeld = true; if (lastPointer) updateHover(...lastPointer); }
@@ -3785,7 +3788,7 @@ function enterFP(b) {
   document.body.classList.add('fp');
   const v = vehMap.get(target), touch = matchMedia('(pointer: coarse)').matches;
   $('fpLabel').textContent = (inCar ? '운전석 · ' : '') + t.name + ' 시점';
-  $('fpHelp').textContent = fp.walk ? (touch ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기')
+  $('fpHelp').textContent = fp.walk ? (touch ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기 · K 불꽃 · N 밤')
     : inCar && v && v.fly ? (v.steer ? (touch ? '▲ 속도 · ◀▶ 방향 · 상승 버튼을 누르는 동안 떠올라요' : 'W 속도 · A/D 방향 · 스페이스를 누르는 동안 떠올라요(떼면 천천히 내려와요)') : '비행기가 날아요 · 드래그로 둘러보기')
     : inCar ? (v && v.steer ? (touch ? '오른쪽 버튼으로 운전 · 끌어서 둘러보기' : '방향키·WASD로 운전 · 드래그로 둘러보기') : '자동차가 달려요 · 드래그로 둘러보기')
     : '드래그로 둘러보기';
@@ -7347,14 +7350,21 @@ function burst(p, n = 110) {
   fx('flash', p, 4);
 }
 function fireworksShow(n = 14) {
-  const L = bricks.filter(b => TYPES[b.t].kind === 'firework' && !b.sn);
+  let L = bricks.filter(b => TYPES[b.t].kind === 'firework' && !b.sn && !cutHidden(b));
   const c = refPos(), span = Math.min(40, board / 3);
+  // 1인칭: 바라보는 쪽 앞 하늘에 보이도록 — 앞쪽 70칸 안의 발사대만 쓰고, 없으면 앞 25~55칸에서 쏨
+  const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y = 0; if (fwd.lengthSq() < 1e-4) fwd.set(0, 0, 1); fwd.normalize();
+  const side = new THREE.Vector3(fwd.z, 0, -fwd.x), eye = camera.position;
+  if (fp) L = L.filter(b => { const dx = b.x + 0.5 - eye.x, dz = b.z + 0.5 - eye.z, d = Math.hypot(dx, dz); return d < 70 && d > 8 && (dx * fwd.x + dz * fwd.z) / d > 0.55; });
   for (let i = 0; i < n; i++) {
-    if (L.length) { const b = L[i % L.length]; launch(b.x + 0.5, (b.y + b.h) * PH, b.z + 0.5, i * 0.45 + rnd(0, 0.3)); }
-    else launch(c.x + rnd(-span, span), 0, c.z + rnd(-span, span), i * 0.45 + rnd(0, 0.3));
+    const t = i * 0.45 + rnd(0, 0.3);
+    if (L.length) { const b = L[i % L.length]; launch(b.x + 0.5, (b.y + b.h) * PH, b.z + 0.5, t); }
+    else if (fp) { const f = rnd(25, 55), sd = rnd(-18, 18), x = eye.x + fwd.x * f + side.x * sd, z = eye.z + fwd.z * f + side.z * sd; launch(x, Math.max(0, groundBelow(x, z, 999)), z, t); }
+    else launch(c.x + rnd(-span, span), 0, c.z + rnd(-span, span), t);
   }
   earn('fireworks');
 }
+function fpFireworks() { fireworksShow(12); toast(night ? '🎆 불꽃놀이!' : '🎆 불꽃놀이! · 밤(N)에 보면 더 예뻐요'); }
 function celebrate(p) { for (let i = 0; i < 4; i++) launch(p.x + rnd(-6, 6), p.y, p.z + rnd(-6, 6), i * 0.25); }
 function fireworkStep(dt) {
   for (let i = rockets.length - 1; i >= 0; i--) {
@@ -7414,7 +7424,7 @@ function ambientStep(dt) {
       fx('smoke', new THREE.Vector3(x + rnd(-0.2, 0.2), (b.y + b.h) * PH + 0.3, z + rnd(-0.2, 0.2)), 1.1);
     }
   }
-  if (night && (spinning || PLAY.timeOn)) {
+  if (night && (spinning || PLAY.timeOn || fp)) {
     autoFwT -= dt;
     if (autoFwT <= 0) { autoFwT = rnd(2.5, 6); const L = bricks.filter(b => TYPES[b.t].kind === 'firework' && !b.sn && !b._off); if (L.length) launchFrom(L[Math.floor(Math.random() * L.length)]); }
   }
@@ -7651,7 +7661,7 @@ function rideOff() {
   if (w) { const [cx, cz] = figFoot(w, w.P, w.th); w.P = [w.P[0] + q.x - cx, w.P[1] + q.z - cz]; w.feet = q.y; w.vy = 0; w.grounded = true; }
   f.ride = null; d.rider = false; rideCool = PLAY.clock + 3.5; f.camY = undefined;
   camera.up.set(0, 1, 0); camera.fov = 70; camera.updateProjectionMatrix(); document.body.classList.remove('riding');
-  $('fpLabel').textContent = TYPES[f.b.t].name + ' 시점'; $('fpHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기'; fpHelpText();
+  $('fpLabel').textContent = TYPES[f.b.t].name + ' 시점'; $('fpHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기 · K 불꽃 · N 밤'; fpHelpText();
   toast('승강장에 내렸어요 · 차 쪽으로 다시 걸어가면 또 탈 수 있어요');
 }
 // 타는 동안: 앞 칸 의자 눈높이에서 선로 방향을 봄(끌어서 둘러보기)
@@ -7753,6 +7763,7 @@ function openPlay() { renderBadges(); syncPlayBtns(); $('playSheet').hidden = fa
 function closePlay() { $('playSheet').hidden = true; }
 $('btnPlay').addEventListener('click', openPlay);
 $('playClose').addEventListener('click', closePlay);
+$('fpFire').addEventListener('click', fpFireworks);
 $('playSheet').addEventListener('click', e => { if (e.target === $('playSheet')) closePlay(); });
 $('playSheet').querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
   const a = b.dataset.act;
