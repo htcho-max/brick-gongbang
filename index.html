@@ -5507,6 +5507,99 @@ const MODELS = [
     // ---- 경주 코스 깃발 8개 (놀이 상자 → 경주): 정문 옆에서 출발해 둘레 길을 한 바퀴
     for (const [x, z] of [[101, 14], [162, 21], [162, 100], [162, 162], [100, 162], [21, 162], [21, 60], [60, 21]]) A('battle:깃발', x, 1, z, 0, 2);
   }},
+  {id: 'fmaze', fig: true, name: '미로 공원', lv: '어려움', board: 192, desc: '192×192 판을 가득 채운 생울타리 미로(33×33칸, 길 폭 3, 울타리 높이 15플레이트라 피규어 눈높이로는 너머가 안 보여요). 남쪽 입구에서 들어가 한가운데 도착 광장을 찾아가요. 광장의 엘리베이터 전망대에 오르면 미로 전체가 보이고, 스위치를 밟으면 불꽃이 터져요. 북쪽에도 출구가 있어요. 막다른 길마다 꽃·토끼·벤치 같은 작은 선물이 있어요.', build(A) {
+    const put = (list, y = 0) => list.forEach(o => A(TYPES[o.t].key, o.x, y || o.y, o.z, o.r, o.c));
+    const W = 184, D = 184, N = 33, P = 5, OX = 8, OZ = 13, MS = N * P + 2, HEDGE = 3, PATH = 9;
+    // 미로: 칸(i,j) 길 = (OX+2+5i ~ +2, OZ+2+5j ~ +2), 벽 두께 2. 고정 씨앗으로 깊이 우선 탐색 → 벽 몇 개를 더 뚫어 고리를 만듦
+    let seed = 20261112; const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    const open = new Uint8Array(MS * MS);   // 1 = 길
+    const carve = (x0, z0, w, d) => { for (let x = x0; x < x0 + w; x++) for (let z = z0; z < z0 + d; z++) open[x * MS + z] = 1; };
+    const cx = i => 2 + P * i, seen = new Uint8Array(N * N), links = [];
+    const stack = [[16, 0]]; seen[16 * N] = 1; carve(cx(16), cx(0), 3, 3);
+    while (stack.length) {
+      const [i, j] = stack[stack.length - 1], nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([a, b]) => [i + a, j + b]).filter(([a, b]) => a >= 0 && b >= 0 && a < N && b < N && !seen[a * N + b]);
+      if (!nb.length) { stack.pop(); continue; }
+      const [a, b] = nb[Math.floor(rand() * nb.length)];
+      seen[a * N + b] = 1; carve(cx(a), cx(b), 3, 3);
+      carve(Math.min(cx(i), cx(a)), Math.min(cx(j), cx(b)), a !== i ? 8 : 3, b !== j ? 8 : 3);
+      stack.push([a, b]);
+    }
+    for (let k = 0; k < 70; k++) { const i = 1 + Math.floor(rand() * (N - 2)), j = 1 + Math.floor(rand() * (N - 2)); if (rand() < 0.5) carve(cx(i), cx(j), 8, 3); else carve(cx(i), cx(j), 3, 8); }
+    // 가운데 5×5칸은 도착 광장, 남쪽·북쪽 바깥 벽에 입구·출구
+    const CA = cx(14), CB = cx(18) + 3; carve(CA, CA, CB - CA, CB - CA);
+    carve(cx(16), 0, 3, 2); carve(cx(16), MS - 2, 3, 2);
+    const isOpen = (x, z) => x >= 0 && z >= 0 && x < MS && z < MS && open[x * MS + z];
+    // 바닥: 미로 길은 베이지 자갈, 광장은 흰·베이지 바둑판과 물 고리, 바깥은 풀밭과 길
+    const PCX = OX + (CA + CB) / 2, PCZ = OZ + (CA + CB) / 2;
+    const inPlaza = (x, z) => x >= OX + CA && x < OX + CB && z >= OZ + CA && z < OZ + CB;
+    const ring = (x, z) => { const r = Math.hypot(x + 0.5 - PCX, z + 0.5 - PCZ); return r > 8.5 && r < 10.5; };
+    const base = (x, z) => {
+      const mx = x - OX, mz = z - OZ, inM = mx >= 0 && mz >= 0 && mx < MS && mz < MS;
+      if (inM && !isOpen(mx, mz)) return null;   // 울타리 자리
+      if (inM && inPlaza(x, z)) return ring(x, z) ? ['tile', 1] : ['tile', (x + z) % 2 ? 4 : PATH];
+      if (inM) return ['tile', PATH];
+      if (x >= OX + cx(16) - 3 && x <= OX + cx(16) + 5 && z < OZ) return ['tile', PATH];   // 입구 길
+      if (z >= 2 && z <= 5 && x >= 20 && x <= 163) return ['tile', PATH];                   // 입구 광장 앞 길
+      return ['plate', 3];
+    };
+    const groups = new Map();
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) { const k = base(x, z); if (!k) continue; const key = k.join('|'); if (!groups.has(key)) groups.set(key, new Set()); groups.get(key).add(x * 1000 + z); }
+    for (const [key, S] of groups) { const [k, c] = key.split('|'); put(coverPieces(0, 0, W, D, k, +c, (x, z) => S.has(x * 1000 + z))); }
+    // 생울타리: 5단(15플레이트), 맨 아래는 바닥 높이(0)부터
+    const mask0 = new Uint8Array(MS * MS); for (let x = 0; x < MS; x++) for (let z = 0; z < MS; z++) mask0[z * MS + x] = open[x * MS + z] ? 0 : 1;
+    const tiles = greedyTile(mask0.slice(), MS, MS, 'brick');
+    for (let L = 0; L < 5; L++) for (const [i, j, sx, sz] of tiles) { const o = pieceAt('brick', OX + i, OZ + j, sx, sz, 3 * L, HEDGE); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); }
+    // 입구 아치(울타리 위 기둥과 들보, 깃발)와 북쪽 출구 표시
+    const EX = OX + cx(16);
+    for (const [zz, c] of [[OZ, 0], [OZ + MS - 2, 1]]) {
+      for (const x of [EX - 2, EX + 3]) for (let y = 15; y < 24; y += 3) A(BK(2, 2), x, y, zz, 0, c);
+      A(BK(1, 8), EX - 2, 24, zz, 1, 2); A(BK(1, 8), EX - 2, 24, zz + 1, 1, 2);
+      A('battle:깃발', EX - 2, 27, zz, 0, c); A('battle:깃발', EX + 4, 27, zz, 0, c);
+    }
+    // 도착 광장: 엘리베이터 전망대(가운데), 모서리 분수 넷, 불꽃 발사대·스위치, 보물 상자, 축하하는 사람들
+    const TX = Math.round(PCX) - 5, TZ = Math.round(PCZ) - 5;
+    for (const [x, z] of [[TX, TZ], [TX + 8, TZ], [TX, TZ + 8], [TX + 8, TZ + 8]]) for (let y = 1; y < 46; y += 3) A(BK(2, 2), x, y, z, 0, (y - 1) % 6 ? 4 : 0);
+    put(coverPieces(TX, TZ, 10, 10, 'plate', 9, (x, z) => !(x >= TX + 3 && x <= TX + 6 && z >= TZ + 3 && z <= TZ + 6) && !((x <= TX + 1 || x >= TX + 8) && (z <= TZ + 1 || z >= TZ + 8))), 46);
+    for (const z of [TZ, TZ + 9]) { A('build:울타리 1×4', TX, 47, z, 0, 4); A('build:울타리 1×4', TX + 4, 47, z, 0, 4); A(BK(1, 2), TX + 8, 47, z, 1, 4); }
+    for (const x of [TX, TX + 9]) { A('build:울타리 1×4', x, 47, TZ + 1, 1, 4); A('build:울타리 1×4', x, 47, TZ + 5, 1, 4); }
+    A('play:엘리베이터 4×4', TX + 3, 1, TZ + 3, 0, 2);
+    A('figure:시민', TX + 1, 47, TZ + 2, 0, 10, {l: 150, r: 20}); A('figure:시민', TX + 7, 47, TZ + 6, 2, 1, {l: 20, r: 150});
+    const C0 = OX + CA, C1 = OX + CB;
+    for (const [x, z] of [[C0 + 1, C0 - OX + OZ + 1], [C1 - 5, C0 - OX + OZ + 1], [C0 + 1, C1 - OX + OZ - 5], [C1 - 5, C1 - OX + OZ - 5]]) A('play:분수', x, 1, z, 0, 12);
+    const Z0 = OZ + CA, Z1 = OZ + CB;
+    for (const [x, z, c] of [[C0 + 7, Z0 + 2, 0], [C1 - 8, Z0 + 2, 1], [C0 + 7, Z1 - 3, 14], [C1 - 8, Z1 - 3, 2]]) A('play:불꽃 발사대', x, 1, z, 0, c);
+    A('play:스위치', Math.round(PCX) - 1, 1, TZ - 4, 0, 0);
+    A(BK(2, 2), Math.round(PCX) + 6, 1, Math.round(PCZ) - 1, 0, 11); A(PK(2, 2), Math.round(PCX) + 6, 4, Math.round(PCZ) - 1, 0, 2); A('food:케이크', Math.round(PCX) + 6, 5, Math.round(PCZ) - 1, 0, 2);
+    for (const [x, z, r, c] of [[C0 + 2, Z0 + 8, 3, 2], [C1 - 4, Z1 - 9, 1, 6], [C0 + 9, Z1 - 7, 2, 4]]) A('figure:시민', x, 1, z, r, c, {l: 165, r: 165});
+    for (const [x, z] of [[C0 + 1, Z0 + 12], [C1 - 2, Z0 + 12]]) A('battle:가로등', x, 1, z, 0, 5);
+    // 막다른 길의 작은 선물들 (꽃밭·토끼·화분·벤치·가로등·길 잃은 사람)
+    const dead = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      if (i >= 14 && i <= 18 && j >= 14 && j <= 18) continue;
+      const x = cx(i), z = cx(j), exits = [isOpen(x + 3, z + 1), isOpen(x - 1, z + 1), isOpen(x + 1, z + 3), isOpen(x + 1, z - 1)].filter(Boolean).length;
+      if (exits === 1) dead.push([OX + x, OZ + z]);
+    }
+    dead.forEach(([x, z], k) => {
+      const kind = k % 9;
+      if (kind === 0) { A('nature:꽃', x, 1, z, 0, 0); A('nature:꽃', x + 2, 1, z, 0, 2); A('nature:꽃', x + 1, 1, z + 2, 0, 10); }
+      else if (kind === 2) A('animal:토끼', x + 1, 1, z + 1, k % 4, k % 2 ? 4 : 9);
+      else if (kind === 4) A('furniture:화분', x + 1, 1, z + 1, 0, 6);
+      else if (kind === 5) { A('furniture:의자', x, 1, z, k % 4, 11); }
+      else if (kind === 7) A('battle:가로등', x + 1, 1, z + 1, 0, 5);
+      else if (kind === 8 && k % 2) A('figure:시민', x, 1, z + 1, k % 4, k % 12, {l: 90, r: 30, h: 30});
+    });
+    // 울타리 위의 새들
+    for (let k = 0; k < 14; k++) { const x = Math.floor(rand() * MS), z = Math.floor(rand() * MS); if (!isOpen(x, z) && !isOpen(x + 1, z) && x + 1 < MS) A('animal:새', OX + x, 15, OZ + z, Math.floor(rand() * 4), [5, 0, 8, 4][k % 4]); }
+    // 바깥: 입구 광장(매표소·벤치·안내원·가로등), 둘레 나무
+    for (let i = 0; i < 5; i++) wallLayer(A, 24, 6, 10, 6, 1 + 3 * i, i === 4 ? 0 : 4, (x, z) => z === 6 && x >= 27 && x <= 30, i % 2);
+    A('build:문 1×4', 27, 1, 6, 0, 1); put(coverPieces(24, 6, 10, 6, 'plate', 0, () => true), 16);
+    A(BK(1, 4), 29, 1, 9, 1, 9); A('figure:시민', 30, 1, 10, 2, 10, {l: 60, r: 20});
+    for (const x of [60, 70, 116, 126]) { A('furniture:의자', x, 1, 7, 0, 11); }
+    A('figure:경찰', EX - 6, 1, 8, 0, 1); A('figure:시민', EX + 6, 1, 7, 0, 2, {legs: 'walk'}); A('figure:시민', EX - 1, 1, 3, 0, 6, {legs: 'walk'});
+    for (let x = 20; x <= 164; x += 16) if (Math.abs(x - EX) > 6) A('battle:가로등', x, 1, 1, 0, 5);
+    for (let z = 20; z <= 176; z += 12) { A('nature:소나무', 2, 1, z, 0, (z / 12) % 4 ? 3 : 10); A('nature:소나무', 178, 1, z, 0, (z / 12) % 3 ? 3 : 6); }
+    for (const x of [6, 40, 140, 170]) A('nature:소나무', x, 1, 7, 0, 3);
+  }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
     const stairH = z => 3 + Math.round(15 * (z + 1) / 24);
