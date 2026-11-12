@@ -5376,31 +5376,33 @@ const MODELS = [
     for (const [x, c] of [[8, 0], [30, 4], [50, 1]]) { A(BK(1, 2), x, 1, 25, 1, c); A(PK(1, 1), x, 4, 25, 0, TRANS); }
     A(PK(4, 8), 24, 1, 6, 1, 4); A(BK(2, 4), 26, 2, 7, 1, 4); A(PK(2, 4), 26, 5, 7, 1, 1);
   }},
-  {id: 'lotte', name: '잠실 롯데월드타워 축소 모형', lv: '어려움', desc: '높이 555m, 123층. 둥근 네모 바닥에서 위로 갈수록 부드럽게 가늘어지고, 네 모서리를 따라 어두운 이음매가 꼭대기까지 이어져요. 맨 위는 철골 격자(다이아그리드)로 뚫린 첨탑. 판 높이를 거의 다 써서 1플레이트 ≈ 2.4m로 담았고, 아래 쇼핑몰과 석촌호수 쪽 산책로도 있어요.', build(A) {
-    const put = list => list.forEach(o => A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c));
-    const W = 64, D = 64, CX = 32, CZ = 34, GL = 4, SEAM = 13, N = 40;
-    // 바닥: 광장, 잔디, 길, 석촌호수
-    const lake = (x, z) => Math.hypot((x - 32) / 30, (z - 4) / 7) < 1 && z < 10;
-    put(coverPieces(0, 0, W, D, 'tile', 8, lake));
-    put(coverPieces(0, 0, W, D, 'plate', 3, (x, z) => !lake(x, z) && z < 14));
-    put(coverPieces(0, 14, W, 4, 'tile', 13, () => true));
-    put(coverPieces(0, 18, W, D - 18, 'plate', 12, () => true));
-    for (let x = 4; x < W; x += 7) { A('round:원형 1×1', x, 1, 12, 0, 11); A('round:고깔 1×1', x, 4, 12, 0, (x % 3) ? 3 : 10); }
-    // 아래 쇼핑몰(낮고 넓은 건물): 유리 띠와 베이지 벽
-    const mall = (x, z) => x >= 6 && x <= 57 && z >= 22 && z <= 60;
-    const towerFoot = (x, z) => Math.pow(Math.abs(x + 0.5 - CX) / 9, 4) + Math.pow(Math.abs(z + 0.5 - CZ) / 9, 4) <= 1;
-    for (let k = 0; k < 4; k++) wallLayer(A, 6, 22, 52, 39, 1 + 3 * k, k === 1 || k === 2 ? TRANS : 9, () => false, k % 2);
-    slabAt(A, 6, 22, 52, 39, 13, 'plate', 12, (x, z) => mall(x, z) && !towerFoot(x, z));
-    // 탑: 층(브릭 한 단)마다 둥근 네모(초타원)의 크기를 줄이며 겉 칸만 쌓음. 대각선 가까운 칸은 어두운 이음매
-    const shell = (hs, y, seamOnly, colorAt, hsNext = 0) => {   // hsNext: 바로 위 단 크기 — 위 단이 덮지 않는 턱은 채움
-      const S = 20, m0 = new Map();
-      const inside = (i, j) => Math.pow(Math.abs(i + 0.5 - S / 2) / hs, 4) + Math.pow(Math.abs(j + 0.5 - S / 2) / hs, 4) <= 1;
+  {id: 'lotte', name: '잠실 롯데월드타워 축소 모형', lv: '어려움', desc: '높이 555m, 123층. 1플레이트 ≈ 1.18m로 63빌딩 모형(1플레이트 ≈ 1m)과 거의 같은 축척이라 둘을 나란히 놓으면 실제처럼 두 배 넘게 높아요. 둥근 네모 바닥(약 69m)에서 위로 갈수록 부드럽게 가늘어지고, 네 모서리 어두운 이음매가 꼭대기까지 이어져요. 107층부터는 철골 격자(다이아그리드)로 뚫린 왕관, 맨 위 첨탑. 북·동쪽을 감싼 롯데월드몰과 남쪽 석촌호수 산책로도 있어요.', build(A) {
+    const put = (list, y = 0) => list.forEach(o => A(TYPES[o.t].key, o.x, y || o.y, o.z, o.r, o.c));
+    const W = 96, D = 100, CX = 36, CZ = 50, GL = 4, SEAM = 13, S = 28;
+    const MPP = 1.18, layer = m => Math.round(m / MPP / 3);   // 미터 → 브릭 단
+    // 바닥: 석촌호수(남쪽), 산책로·벚나무, 길, 광장(회색)
+    const lake = (x, z) => Math.hypot((x + 0.5 - 48) / 46, (z + 0.5 - 6) / 16) < 1 && z < 20;
+    put(coverPieces(0, 0, W, D, 'tile', 8, (x, z) => lake(x, z) && (x * 7 + z * 3) % 11 === 0));
+    put(coverPieces(0, 0, W, D, 'tile', 1, (x, z) => lake(x, z) && (x * 7 + z * 3) % 11 !== 0));
+    put(coverPieces(0, 0, W, D, 'plate', 3, (x, z) => !lake(x, z) && z < 24));
+    put(coverPieces(0, 24, W, 5, 'tile', 9, () => true));
+    put(coverPieces(0, 29, W, 5, 'tile', 13, () => true));
+    put(coverPieces(0, 34, W, D - 34, 'plate', 12, () => true));
+    for (let x = 3; x < W; x += 6) { A('round:원형 1×1', x, 1, 21, 0, 11); A('round:고깔 1×1', x, 4, 21, 0, (x % 4) ? 10 : 3); }
+    // 롯데월드몰: 북쪽·동쪽을 감싼 낮은 건물 (11단 ≈ 39m), 유리 띠
+    const mallE = [54, 34, 40, 62], mallN = [6, 70, 48, 26];   // x0, z0, w, d
+    for (const [x0, z0, w, d] of [mallE, mallN]) {
+      for (let k = 0; k < 11; k++) wallLayer(A, x0, z0, w, d, 1 + 3 * k, k % 3 === 1 ? TRANS : k === 10 ? 12 : 9, () => false, k % 2);
+      put(coverPieces(x0, z0, w, d, 'plate', 12, () => true), 34);
+    }
+    // 탑: 브릭 한 단마다 둥근 네모(초타원, 4제곱) 겉 칸만 쌓음. 위 단이 덮지 않는 턱은 채움. 대각선 가까운 칸은 어두운 이음매
+    const shell = (hs, y, seamOnly, colorAt, hsNext = 0) => {
+      const m0 = new Map(), f = (i, j, h) => Math.pow(Math.abs(i + 0.5 - S / 2) / h, 4) + Math.pow(Math.abs(j + 0.5 - S / 2) / h, 4) <= 1;
       for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
-        if (!inside(i, j)) continue;
-        const insN = Math.pow(Math.abs(i + 0.5 - S / 2) / hsNext, 4) + Math.pow(Math.abs(j + 0.5 - S / 2) / hsNext, 4) <= 1;
-        const edge = !inside(i - 1, j) || !inside(i + 1, j) || !inside(i, j - 1) || !inside(i, j + 1) || (hsNext > 0 && !insN);
+        if (!f(i, j, hs)) continue;
+        const edge = !f(i - 1, j, hs) || !f(i + 1, j, hs) || !f(i, j - 1, hs) || !f(i, j + 1, hs) || (hsNext > 0 && !f(i, j, hsNext));
         if (!edge) continue;
-        const dx = Math.abs(i + 0.5 - S / 2), dz = Math.abs(j + 0.5 - S / 2), seam = Math.abs(dx - dz) < 1.1;
+        const dx = Math.abs(i + 0.5 - S / 2), dz = Math.abs(j + 0.5 - S / 2), seam = Math.abs(dx - dz) < 1.2;
         if (seamOnly && !seam && (i + j + y) % 3) continue;
         const c = colorAt(seam);
         if (!m0.has(c)) m0.set(c, new Uint8Array(S * S));
@@ -5408,14 +5410,17 @@ const MODELS = [
       }
       for (const [c, m] of m0) for (const [i, j, sx, sz] of greedyTile(m, S, S, 'brick')) { const o = pieceAt('brick', CX - S / 2 + i, CZ - S / 2 + j, sx, sz, y, c); A(TYPES[o.t].key, o.x, o.y, o.z, o.r, o.c); }
     };
-    const L = 70;
-    for (let k = 0; k < L; k++) {
-      const hsAt = q => 9 - 5.2 * Math.pow(q / (L - 1), 1.6), hs = hsAt(k);
-      shell(hs, 13 + 3 * k, false, seam => seam ? SEAM : k % 6 === 5 ? 12 : GL, k < L - 1 ? hsAt(k + 1) : 0.01);
-    }
-    // 꼭대기 첨탑: 철골 격자처럼 뚫린 단 4개 + 가운데 기둥
-    for (let k = 0; k < 4; k++) shell(3.6 - 0.5 * k, 13 + 3 * (L + k), true, () => 12);
-    A('round:기둥 1×1', CX, 13 + 3 * L, CZ, 0, 12); A('round:원판 1×1', CX, 13 + 3 * L + 9, CZ, 0, 4);
+    // 몸통: 땅에서 107층(약 435m)까지. 반쪽 너비 11.7칸(≈69m) → 5.4칸
+    const L = layer(435), hsAt = q => 11.7 - 6.3 * Math.pow(q / (L - 1), 1.35);
+    for (let k = 0; k < L; k++) shell(hsAt(k), 1 + 3 * k, false, seam => seam ? SEAM : k % 8 === 7 ? 12 : GL, k < L - 1 ? hsAt(k + 1) : 0.01);
+    // 왕관: 107층 ~ 지붕(약 497m) 뚫린 격자, 위로 갈수록 좁아짐
+    const C = layer(497) - L;
+    for (let k = 0; k < C; k++) shell(5.4 - 3.2 * (k / (C - 1)), 1 + 3 * (L + k), true, () => (k % 4 === 3 ? 4 : 12));
+    // 첨탑: 가운데 기둥 + 꼭대기 원판 (555m)
+    const y0 = 1 + 3 * (L + C), top = layer(555) * 3;
+    A(BK(2, 2), CX - 1, y0, CZ - 1, 0, 12);
+    let y = y0 + 3; while (y + 9 <= top) { A('round:기둥 1×1', CX, y, CZ, 0, 12); y += 9; }
+    A('round:원판 1×1', CX, y, CZ, 0, 4); A('round:원판 1×1', CX, y + 1, CZ, 0, 0);
   }},
   {id: 'fpark', fig: true, name: '브릭 놀이동산', lv: '어려움', board: 192, desc: '192×192 판을 다 쓰는 놀이동산. 사람이 타는 대관람차와 롤러코스터, 엘리베이터 전망대, 해자와 도개교가 있는 성, 회전문 푸드코트, 분수 광장, 꼬마 관람차, 동물 농장, 소풍 숲. 1인칭으로 롤러코스터 승강장의 차 쪽으로 걸어가면 타고, 대관람차는 멈춘 곤돌라 안으로 걸어 들어가면 돌아요. 깃발 8개는 경주 코스예요.', build(A) {
     const put = (list, y = 0) => list.forEach(o => A(TYPES[o.t].key, o.x, y || o.y, o.z, o.r, o.c));
@@ -6016,16 +6021,16 @@ function findSpot(list) {
       else if (!gap || (gap.board === n && d < gap.d)) { if (!gap || gap.board === n) gap = Object.assign(spot, {d}); }
     }
     if (best) return best;
+    const sh = shiftFit(n); if (sh) return sh;   // 이 판에서 빈자리가 없으면, 지금 작품을 한쪽으로 밀어 나란히 놓을 수 있나 (더 큰 판보다 먼저)
   }
   if (gap) { delete gap.d; return gap; }
-  // 그래도 없으면: 더 큰 판에서 지금 작품을 한쪽으로 밀고 나란히 (가로 또는 세로)
-  const ew = ex1 - ex0, ed = ez1 - ez0, G2 = 3;
-  for (const n of BOARD_SIZES.filter(n => n >= board)) {
-    const h = n / 2 - 1;
+  return null;
+  function shiftFit(n) {   // 가로 또는 세로로 나란히
+    const ew = ex1 - ex0, ed = ez1 - ez0, G2 = 3, h = n / 2 - 1;
     if (ew + G2 + mw <= 2 * h && Math.max(ed, md) <= 2 * h) { const st = -Math.floor((ew + G2 + mw) / 2); return {board: n, shift: [st - ex0, -Math.floor(ed / 2) - ez0], dx: st + ew + G2 - mx0, dz: -Math.floor(md / 2) - mz0}; }
     if (ed + G2 + md <= 2 * h && Math.max(ew, mw) <= 2 * h) { const st = -Math.floor((ed + G2 + md) / 2); return {board: n, shift: [-Math.floor(ew / 2) - ex0, st - ez0], dx: -Math.floor(mw / 2) - mx0, dz: st + ed + G2 - mz0}; }
+    return null;
   }
-  return null;
 }
 // 지금 작품 전체를 옮기기 (옆붙임 상자도 같이)
 function shiftAll(dx, dz) {
