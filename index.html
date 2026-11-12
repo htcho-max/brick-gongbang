@@ -455,7 +455,7 @@ body.fp .bp{display:none!important}
         <button class="pbtn" data-act="time" aria-pressed="false"><b>🌅 시간 흐르기</b><span>낮 → 노을 → 밤 → 새벽</span></button>
         <button class="pbtn" data-act="talk" aria-pressed="true"><b>💬 말풍선</b><span>사람과 동물이 말해요</span></button>
       </div>
-      <h3>배지 <span id="badgeCount">0/18</span></h3>
+      <h3>배지 <span id="badgeCount">0/20</span></h3>
       <ul class="badges" id="badges"></ul>
       <p class="sheet-note">새 부품: '놀이' 분류(엘리베이터·회전문·도개교·관람차·스위치·분수·굴뚝·불꽃 발사대)와 '동물' 분류. 장치와 동물은 ▶ 돌리기를 켜거나 1인칭일 때 움직여요. 스위치를 밟거나 누르면 둘레의 불빛·분수·도개교·엘리베이터·불꽃이 반응해요.</p>
     </div>
@@ -626,6 +626,8 @@ def('play','switch',2,2,1,'스위치',{multi:true}); def('play','fountain',4,4,3
 def('play','chimney',2,2,9,'굴뚝',{multi:true}); def('play','firework',1,1,2,'불꽃 발사대',{multi:true});
 def('animal','dog',1,2,5,'강아지',{multi:true}); def('animal','cat',1,2,4,'고양이',{multi:true}); def('animal','rabbit',1,1,4,'토끼',{multi:true});
 def('animal','chicken',1,1,4,'닭',{multi:true}); def('animal','duck',1,1,3,'오리',{multi:true}); def('animal','bird',1,1,2,'새',{multi:true});
+def('play','bigferris',8,8,2,'대관람차',{multi:true}); def('play','coaster',8,24,3,'롤러코스터',{multi:true});
+const BF = {R: 30, HUB: 36.9, N: 16};   // 대관람차: 반지름, 축 높이, 곤돌라 수
 def('animal','fish',1,2,2,'물고기',{multi:true}); def('animal','pig',2,2,4,'돼지',{multi:true}); def('animal','cow',2,4,9,'소',{multi:true});
 // 회전축 높이: 바퀴와 축은 자기 중심축으로 돌도록 중심을 원점에 두고 그만큼 띄워서 배치
 TYPES.forEach(t => { if (t.kind === 'wheel') t.pivotY = Math.min(t.d, t.h * PH) / 2 - 0.03; if (t.kind === 'axle') t.pivotY = 0.3; if (t.kind === 'propeller') t.pivotY = 1.2; });
@@ -1001,7 +1003,7 @@ function mergeColored(P) {
   return THREE.BufferGeometryUtils.mergeBufferGeometries(list);
 }
 function multiGeo(t, c, pose) {
-  const key = t.id + ':' + c + (t.kind === 'minifig' ? ':' + poseKey(figPose(t, pose)) : t.kind === 'ferris' && typeof pose === 'string' ? ':' + pose : '');
+  const key = t.id + ':' + c + (t.kind === 'minifig' ? ':' + poseKey(figPose(t, pose)) : (t.kind === 'ferris' || t.kind === 'bigferris' || t.kind === 'coaster') && typeof pose === 'string' ? ':' + pose : '');
   if (geoCache[key]) return geoCache[key];
   const sel = COLORS[c][1], P = [], add = (g, col) => P.push([g, col]), LT = [], MZ = [];   // MZ: 총구 위치   // LT: 불빛 위치 [x,y,z,색,세기]
   const YEL = '#f6d01a', BLK = '#1b2a34', GRN = '#237841', BRN = '#583927', GRY = '#a0a5a9', WHT = '#f4f4f4';
@@ -1318,6 +1320,72 @@ function multiGeo(t, c, pose) {
         }
         for (const sz of [-1, 1]) bx(W - 0.04, 0.3, 1.2, 0, 0, sz * 6.8, DARK);
         if (pose !== 'legs') { wheel(HUB); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; gond(HUB + R * Math.cos(a), R * Math.sin(a), GC[i % 4]); } }
+      }
+    } else if (k === 'bigferris') {   // 대관람차: 사람이 타는 크기. 곤돌라(6×5, 안 높이 5.2)가 바퀴 아래쪽에 매달림. pose: 'legs' / 'wheel'(축이 원점) / 'cabN'(매단 점이 원점)
+      const R = BF.R, HUB = BF.HUB, NC = BF.N, GC = ['#c91a09', '#0055bf', '#f2cd37', '#237841', '#fe8a18', '#81007b', '#36aebf', '#fc97ac'];
+      const wheel = oy => {
+        for (const sx of [-4, 4]) {
+          for (const [rr, tb] of [[R, 0.24], [R * 0.62, 0.15], [2.4, 0.3]]) { const g = new THREE.TorusGeometry(rr, tb, 6, rr > 5 ? 96 : 24); g.rotateY(Math.PI / 2); g.translate(sx, oy, 0); add(g, sel); }
+          for (let i = 0; i < NC * 2; i++) { const s = new THREE.BoxGeometry(0.14, R, 0.14); s.translate(0, R / 2, 0); s.rotateX(i * Math.PI / NC); s.translate(sx, oy, 0); add(s, WHT); }
+        }
+        for (let i = 0; i < NC; i++) { const a = i * Math.PI * 2 / NC, g = new THREE.CylinderGeometry(0.12, 0.12, 8.4, 8); g.rotateZ(Math.PI / 2); g.translate(0, oy - R * Math.cos(a), R * Math.sin(a)); add(g, STONE); }
+        const hb = new THREE.CylinderGeometry(1.4, 1.4, 9, 20); hb.rotateZ(Math.PI / 2); hb.translate(0, oy, 0); add(hb, STONE);
+      };
+      const cab = (y, z, col) => {
+        const fy = y - 6.4;
+        bx(6, 0.3, 5, 0, fy, z, DARK);
+        for (const sx of [-2.85, 2.85]) for (const sz of [-2.35, 2.35]) bx(0.3, 5.2, 0.3, sx, fy + 0.3, z + sz, col);
+        bx(6.4, 0.3, 5.4, 0, y - 0.9, z, col); bx(4.6, 0.3, 3.6, 0, y - 0.6, z, WHT);
+        for (const s of [-1, 1]) { bx(5.4, 1.3, 0.15, 0, fy + 0.3, z + s * 2.35, col); bx(5.4, 0.1, 0.12, 0, fy + 3.3, z + s * 2.35, WHT); }   // 창은 뚫어 둠(밖이 보이게, 떨어지지 않게 보이지 않는 벽)
+        bx(0.15, 1.3, 4.4, 2.85, fy + 0.3, z, col); bx(0.12, 0.1, 4.4, 2.85, fy + 3.3, z, WHT);
+        bx(1.0, 1.0, 4.2, 2.2, fy + 0.3, z, '#8a5a32');
+        for (const sx of [-2.6, 2.6]) cyl(0.07, 0.07, 0.6, sx, y - 0.6, z, STONE, 6);
+      };
+      if (pose === 'wheel') wheel(0);
+      else if (typeof pose === 'string' && pose.startsWith('cab')) cab(0, 0, GC[+pose.slice(3) % GC.length]);
+      else {
+        const L = Math.hypot(22, HUB);
+        for (const sx of [-6.5, 6.5]) {
+          for (const sz of [-1, 1]) { const g = new THREE.BoxGeometry(0.6, L, 0.6); g.rotateX(Math.atan2(-sz * 22, HUB)); g.translate(sx, HUB / 2, sz * 11); add(g, WHT); bx(2, 0.4, 3, sx, 0, sz * 22, DARK); }
+          for (const [hy, hl] of [[HUB * 0.35, 28.6], [HUB * 0.68, 14]]) bx(0.35, 0.35, hl, sx, hy, 0, WHT);
+        }
+        const ax = new THREE.CylinderGeometry(0.6, 0.6, 15, 14); ax.rotateZ(Math.PI / 2); ax.translate(0, HUB, 0); add(ax, STONE);
+        if (pose !== 'legs') { wheel(HUB); for (let i = 0; i < NC; i++) { const a = i * Math.PI * 2 / NC; cab(HUB - R * Math.cos(a), R * Math.sin(a), GC[i % GC.length]); } }
+        LT.push([0, HUB, 7.6, '#ffe2a0', 1.2], [0, HUB, -7.6, '#ffe2a0', 1.2]);
+      }
+    } else if (k === 'coaster') {   // 롤러코스터: 정해진 선로(승강장 → 끌어올리는 언덕 → 큰 낙하 → 낙타 언덕 → 돌아옴). pose: 'track' 선로만 / 'car' 차 한 칸(바퀴 윗면이 원점, 앞 = +z)
+      const C = coasterCurve(), CAR = (col) => {
+        bx(2.8, 0.4, 4.0, 0, 0, 0, DARK);
+        for (const s of [-1, 1]) bx(0.2, 0.9, 4.0, s * 1.3, 0.4, 0, col);
+        bx(2.8, 1.2, 0.3, 0, 0.4, 1.85, col); bx(2.6, 0.6, 0.6, 0, 0.3, 2.3, col); bx(2.8, 1.0, 0.25, 0, 0.4, -1.9, col);
+        for (const zz of [0.9, -0.6]) { bx(2.4, 0.35, 0.9, 0, 0.4, zz, BLK); bx(2.4, 0.9, 0.2, 0, 0.75, zz - 0.45, BLK); const lb = new THREE.CylinderGeometry(0.06, 0.06, 2.2, 6); lb.rotateZ(Math.PI / 2); lb.translate(0, 1.35, zz + 0.5); add(lb, YEL); }
+        for (const sx of [-1, 1]) for (const sz of [-1.3, 1.3]) { const w = new THREE.CylinderGeometry(0.2, 0.2, 0.2, 10); w.rotateZ(Math.PI / 2); w.translate(sx * 0.9, -0.05, sz); add(w, DARK); }
+        sph(0.12, 0.8, 0.75, 2.62, '#fff4c4'); sph(0.12, -0.8, 0.75, 2.62, '#fff4c4');
+      };
+      if (pose === 'car') CAR(sel);
+      else {
+        // 선로: 레일 둘 + 가운데 등뼈 + 침목 + 기둥
+        const N = 900, up = new THREE.Vector3(0, 1, 0), rl = [[], []], sp = [];
+        for (let i = 0; i < N; i++) {
+          const u = i / N, p = C.curve.getPointAt(u), T = C.curve.getTangentAt(u), side = new THREE.Vector3(T.z, 0, -T.x).normalize();
+          rl[0].push(p.clone().addScaledVector(side, 0.8)); rl[1].push(p.clone().addScaledVector(side, -0.8)); sp.push(p.clone().add(new THREE.Vector3(0, -0.45, 0)));
+          if (i % 3 === 0) { const g = new THREE.BoxGeometry(2.0, 0.14, 0.3), y2 = new THREE.Vector3().crossVectors(T, side); g.applyMatrix4(new THREE.Matrix4().makeBasis(side, y2, T).setPosition(p.x, p.y - 0.2, p.z)); add(g, DARK); }
+          if (i % 12 === 0 && p.y > 1.6) { cyl(0.18, 0.22, p.y - 0.5, p.x, 0, p.z, WHT, 8); bx(0.8, 0.2, 0.8, p.x, 0, p.z, DARK); }
+        }
+        for (const L of rl) add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L, true), N, 0.13, 6, true), sel);
+        add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp, true), N, 0.2, 6, true), STONE);
+        // 승강장: 나무 바닥(윗면 1.2) + 한 단 계단 + 지붕
+        bx(3, 1.2, 24, -1.5, 0, 0, '#8a5a32'); bx(1, 0.6, 24, -3.5, 0, 0, '#8a5a32');
+        for (let z = -11.5; z <= 11.5; z += 1) bx(2.9, 0.02, 0.06, -1.5, 1.2, z, '#5e3a1e');
+        bx(0.25, 0.04, 24, -0.15, 1.2, 0, YEL);
+        for (const sx of [-3.4, 3.4]) for (const sz of [-9, 9]) cyl(0.2, 0.2, 6.6, sx, 0, sz, WHT, 10);
+        for (const y of [1.0, 1.9]) bx(0.12, 0.12, 23, 3.25, y, 0, YEL); for (let z = -11.5; z <= 11.5; z += 2.5) bx(0.14, 2.0, 0.14, 3.25, 0, z, WHT);   // 건너편 난간
+        bx(7.6, 0.4, 21, 0, 6.6, 0, sel); bx(6.8, 0.3, 19, 0, 7.0, 0, WHT);
+        if (pose !== 'track') for (let i = 0; i < 2; i++) {
+          const u = (C.us - i * C.gap / C.L + 1) % 1, p = C.curve.getPointAt(u), T = C.curve.getTangentAt(u), side = new THREE.Vector3(T.z, 0, -T.x).normalize(), y2 = new THREE.Vector3().crossVectors(T, side);
+          const M = new THREE.Matrix4().makeBasis(side, y2, T).setPosition(p.x, p.y, p.z), n0 = P.length;
+          CAR(i ? '#0055bf' : sel); for (let j = n0; j < P.length; j++) P[j][0].applyMatrix4(M);
+        }
       }
     } else if (k === 'switch') {   // 밟거나 누르는 스위치
       bx(W - 0.1, 0.24, D - 0.1, 0, 0, 0, DARK); const r = new THREE.TorusGeometry(0.62, 0.06, 6, 24); r.rotateX(Math.PI / 2); r.translate(0, 0.26, 0); add(r, YEL);
@@ -3666,6 +3734,7 @@ function enterFP(b) {
 }
 function exitFP() {
   if (!fp) return;
+  if (fp.ride) rideOff();
   if (held) endHold(null, false);
   if (fpBuild) { const keep = true; fpBuild = false; document.body.classList.remove('fpbuild'); $('fpBuild').setAttribute('aria-pressed', false); $('drivepad').style.bottom = ''; ghost.visible = false; ghostGroup.visible = false; placement = null; setHovered(null); }
   const f = fp; fp = null; fpLook = null;
@@ -3725,6 +3794,7 @@ function figHit(w, P, th, feet) {
     if (o === me) continue;
     for (const B of figBoxes(o)) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FIG_H - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
   }
+  for (const B of EXTRA) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FIG_H - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
   return top;
 }
 // 발밑 바닥 높이 (발보다 낮거나 같은 윗면 중 가장 높은 것)
@@ -3735,6 +3805,7 @@ function figGround(w, P, th, feet) {
     if (o === me) continue;
     for (const B of figBoxes(o)) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[3] <= feet + 0.02) g = Math.max(g, B[3]);
   }
+  for (const B of EXTRA) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[3] <= feet + 0.02) g = Math.max(g, B[3]);
   return g;
 }
 function walkStep(f, dt) {
@@ -3788,7 +3859,7 @@ function walkStep(f, dt) {
 function fpStep(dt) {
   const f = fp;
   if (!f.b.mesh || !f.b.mesh.parent) { exitFP(); return; }
-  if (f.walk) { walkStep(f, dt); const st = Math.floor(f.bob / 0.9); if (st !== f.stepN) { f.stepN = st; if (f.walk.grounded) sfx.step(); } }
+  if (f.walk && !f.ride) { walkStep(f, dt); const st = Math.floor(f.bob / 0.9); if (st !== f.stepN) { f.stepN = st; if (f.walk.grounded) sfx.step(); } }
   const m = f.b.mesh;
   m.updateMatrixWorld(true);
   const eye = f.eye.clone();
@@ -5317,75 +5388,124 @@ const MODELS = [
     for (let k = 0; k < 4; k++) shell(3.6 - 0.5 * k, 13 + 3 * (L + k), true, () => 12);
     A('round:기둥 1×1', CX, 13 + 3 * L, CZ, 0, 12); A('round:원판 1×1', CX, 13 + 3 * L + 9, CZ, 0, 4);
   }},
-  {id: 'fpark', fig: true, name: '브릭 놀이동산', lv: '보통', board: 96, desc: '관람차, 엘리베이터 전망대, 도개교가 있는 성, 회전문 매표소, 분수 광장, 동물 농장. ▶ 돌리기나 1인칭에서 장치가 움직이고 동물이 돌아다녀요. 스위치를 밟으면 도개교가 올라가고 불꽃이 터져요. 깃발 6개는 경주 코스예요.', build(A) {
+  {id: 'fpark', fig: true, name: '브릭 놀이동산', lv: '어려움', board: 192, desc: '192×192 판을 다 쓰는 놀이동산. 사람이 타는 대관람차와 롤러코스터, 엘리베이터 전망대, 해자와 도개교가 있는 성, 회전문 푸드코트, 분수 광장, 꼬마 관람차, 동물 농장, 소풍 숲. 1인칭으로 롤러코스터 승강장의 차 쪽으로 걸어가면 타고, 대관람차는 멈춘 곤돌라 안으로 걸어 들어가면 돌아요. 깃발 8개는 경주 코스예요.', build(A) {
     const put = (list, y = 0) => list.forEach(o => A(TYPES[o.t].key, o.x, y || o.y, o.z, o.r, o.c));
-    const W = 80, D = 64, GR = 3, PATH = 9, STONE = 12, WOOD = 11;
-    const plaza = (x, z) => Math.hypot(x + 0.5 - 40, z + 0.5 - 36) < 8.5;
-    const path = (x, z) => (x >= 37 && x <= 42 && z <= 44) || (z >= 28 && z <= 31 && x >= 6 && x <= 74) || plaza(x, z);
-    const moat = (x, z) => x >= 4 && x <= 25 && z >= 41 && z <= 46;
-    const pond = (x, z) => Math.hypot((x + 0.5 - 67) / 5, (z + 0.5 - 8) / 3.2) < 1;
-    // 바닥: 풀밭, 베이지 길·광장, 파란 해자·연못
-    put(coverPieces(0, 0, W, D, 'plate', GR, (x, z) => !path(x, z) && !moat(x, z) && !pond(x, z)));
-    put(coverPieces(0, 0, W, D, 'tile', PATH, (x, z) => path(x, z) && !(plaza(x, z) && (x + z) % 2)));
-    put(coverPieces(0, 0, W, D, 'tile', 4, (x, z) => path(x, z) && plaza(x, z) && (x + z) % 2 && !(x >= 37 && x <= 42 && z <= 44)));
-    put(coverPieces(0, 0, W, D, 'tile', 1, (x, z) => moat(x, z) || (pond(x, z) && (x * 3 + z) % 5)));
-    put(coverPieces(0, 0, W, D, 'tile', 8, (x, z) => pond(x, z) && !((x * 3 + z) % 5)));
-    // 정문: 기둥 둘과 빨강·노랑 들보
-    for (const x of [35, 43]) for (let y = 1; y < 19; y += 3) A(BK(2, 2), x, y, 1, 0, y % 2 ? 0 : 2);
-    A(BK(1, 10), 35, 19, 1, 1, 0); A(BK(1, 10), 35, 19, 2, 1, 2);
-    for (const x of [35, 44]) A('battle:깃발', x, 22, 1, 0, x === 35 ? 1 : 0);
-    // 매표소: 흰 벽, 동쪽 벽에 회전문, 안에 계산대와 직원
-    for (let i = 0; i < 5; i++) wallLayer(A, 22, 4, 10, 8, 1 + 3 * i, i === 4 ? 1 : 4, (x, z) => x === 31 && z >= 6 && z <= 9, i % 2);
-    put(coverPieces(22, 4, 10, 8, 'plate', 1, () => true), 16);
-    A('play:회전문', 30, 1, 6, 0, 1);
-    A(BK(1, 4), 26, 1, 6, 0, 9); A('figure:시민', 23, 1, 7, 3, 0, {l: 60, r: 20});
-    A('animal:고양이', 24, 17, 6, 0, 6);
-    // 전망대: 네 모서리 기둥 + 37플레이트 높이 전망 바닥(가운데 4×4는 엘리베이터 통로) + 난간
-    for (const [x, z] of [[8, 14], [16, 14], [8, 22], [16, 22]]) for (let y = 1; y < 37; y += 3) A(BK(2, 2), x, y, z, 0, y % 6 === 1 ? 4 : 0);
-    put(coverPieces(8, 14, 10, 10, 'plate', 9, (x, z) => !(x >= 11 && x <= 14 && z >= 17 && z <= 20) && !((x === 8 || x === 9 || x === 16 || x === 17) && (z === 14 || z === 15 || z === 22 || z === 23))), 37);
-    for (const z of [14, 23]) { A('build:울타리 1×4', 8, 38, z, 0, 4); A('build:울타리 1×4', 12, 38, z, 0, 4); A(BK(1, 2), 16, 38, z, 1, 4); }
-    for (const x of [8, 17]) { A('build:울타리 1×4', x, 38, 15, 1, 4); A('build:울타리 1×4', x, 38, 19, 1, 4); }
-    A('play:엘리베이터 4×4', 11, 1, 17, 0, 2);
-    A('figure:시민', 9, 38, 16, 0, 10, {l: 150, r: 20}); A('figure:시민', 14, 38, 21, 0, 8, {l: 20, r: 60});
-    A('play:스위치', 13, 1, 25, 0, 0);
-    // 분수 광장, 아이들, 불꽃 발사대와 스위치
-    A('play:분수', 38, 1, 34, 0, 12);
-    A('figure:시민', 34, 1, 36, 3, 2, {l: 150, r: 150}); A('figure:시민', 45, 1, 35, 1, 10, {legs: 'run', l: 60, r: -40}); A('animal:강아지', 44, 1, 39, 1, 9);
-    for (const x of [31, 40, 49]) A('play:불꽃 발사대', x, 1, 48, 0, [0, 1, 14][(x - 31) / 9]);
-    A('play:스위치', 44, 1, 47, 0, 1);
-    // 가로등
-    for (const [x, z] of [[35, 9], [44, 9], [35, 19], [44, 19], [10, 32], [24, 32], [56, 32], [70, 32], [29, 41], [51, 41]]) A('battle:가로등', x, 1, z, 0, 5);
-    // 성: 회색 벽, 남쪽 성문(4칸) 앞 해자 위로 도개교 둘, 성벽 위 여장과 깃발, 안에 기사
-    for (let i = 0; i < 5; i++) wallLayer(A, 4, 48, 22, 14, 1 + 3 * i, STONE, (x, z) => z === 48 && x >= 13 && x <= 16, i % 2);
-    A(BK(1, 6), 12, 16, 48, 1, 13);
-    for (const z of [48, 61]) for (let x = 6; x <= 22; x += 4) if (z === 61 || x !== 14) A(BK(1, 2), x, 16, z, 1, 13);
-    for (const [x, z] of [[4, 48], [25, 48], [4, 61], [25, 61]]) A('battle:깃발', x, 16, z, 0, 0);
-    for (const x of [13, 15]) A('play:도개교 2×8', x, 1, 40, 2, WOOD);
-    A('play:스위치', 18, 1, 37, 0, 0); A('play:스위치', 9, 1, 51, 0, 0);
-    A('figure:기사', 15, 1, 55, 2, 0); A('figure:기사', 20, 1, 52, 3, 1, {l: 30, r: 90, ri: 'spear', li: 'shield'});
-    A('animal:새', 20, 16, 61, 0, 5);
-    // 관람차와 줄 선 사람들
-    A('play:관람차', 62, 1, 40, 0, 0);
-    for (const [x, z, c] of [[58, 36, 1], [58, 38, 10], [66, 36, 2]]) A('figure:시민', x, 1, z, 0, c, {l: 30, r: 0});
-    // 농장: 굴뚝 있는 농가, 울타리 우리 안 동물들, 연못의 오리·물고기
-    for (let i = 0; i < 5; i++) wallLayer(A, 50, 2, 10, 8, 1 + 3 * i, WOOD, (x, z) => z === 9 && x >= 54 && x <= 57, i % 2);
-    A('build:문 1×4', 54, 1, 9, 0, 0);
-    put(coverPieces(50, 2, 10, 8, 'plate', 0, () => true), 16);
-    A('play:굴뚝', 51, 17, 3, 0, 0); A('animal:새', 57, 17, 6, 0, 8);
-    for (let x = 50; x <= 70; x += 4) { A('build:울타리 1×4', x, 1, 12, 0, 4); if (x !== 58) A('build:울타리 1×4', x, 1, 25, 0, 4); }
-    for (const x of [50, 73]) for (const z of [13, 17, 21]) A('build:울타리 1×4', x, 1, z, 1, 4);
-    A('animal:소', 53, 1, 15, 0, 5); A('animal:돼지', 59, 1, 14, 1, 10); A('animal:돼지', 63, 1, 19, 3, 10);
-    for (const [x, z] of [[67, 15], [69, 18], [66, 21]]) A('animal:닭', x, 1, z, (x + z) % 4, 4);
-    A('animal:토끼', 57, 1, 21, 0, 4); A('animal:토끼', 70, 1, 22, 2, 9);
-    A('animal:오리', 65, 1, 8, 1, 4); A('animal:오리', 68, 1, 9, 3, 2); A('animal:물고기', 67, 1, 6, 0, 6);
-    A('figure:시민', 61, 1, 27, 0, 11, {l: 20, r: 90}); A('animal:강아지', 64, 1, 27, 3, 11);
-    // 걷는 사람들
-    A('figure:시민', 41, 1, 12, 0, 1, {legs: 'walk'}); A('figure:시민', 41, 1, 22, 2, 6, {legs: 'walk'}); A('figure:경찰', 20, 1, 29, 3, 1, {legs: 'walk'}); A('figure:시민', 60, 1, 29, 1, 14, {legs: 'walk'});
-    // 나무와 꽃
-    for (const [x, z, c] of [[2, 4, 3], [12, 6, 3], [2, 26, 10], [28, 24, 3], [48, 36, 6], [30, 60, 3], [76, 44, 3], [76, 58, 10], [46, 58, 3], [76, 4, 3]]) A('nature:소나무', x, 1, z, 0, c);
-    for (let x = 33; x <= 46; x += 13) for (let z = 10; z <= 22; z += 4) A('nature:꽃', x, 1, z, 0, (x + z) % 3 ? 0 : 2);
-    // 경주 코스 깃발 6개 (놀이 상자 → 경주): 정문 옆에서 출발해 한 바퀴
-    for (const [x, z, c] of [[46, 4, 2], [75, 34, 2], [60, 58, 2], [30, 53, 2], [3, 35, 2], [19, 26, 2]]) A('battle:깃발', x, 1, z, 0, c);
+    const W = 184, D = 184, GR = 3, PATH = 9, STONE = 12, WOOD = 11;
+    const inR = (x, z, cx, cz, r) => Math.hypot(x + 0.5 - cx, z + 0.5 - cz) < r;
+    const loop = (x, z) => x >= 14 && x <= 169 && z >= 14 && z <= 169 && (x <= 19 || x >= 164 || z <= 19 || z >= 164);
+    const plaza = (x, z) => inR(x, z, 92, 100, 18);
+    const pool = (x, z) => inR(x, z, 92, 100, 8) && !inR(x, z, 92, 100, 4.5);
+    const moat = (x, z) => x >= 64 && x <= 119 && z >= 130 && z <= 135;
+    const pond = (x, z) => Math.hypot((x + 0.5 - 171) / 6, (z + 0.5 - 140) / 5) < 1;
+    const path = (x, z) => loop(x, z) || (x >= 86 && x <= 97 && z <= 84) || (z >= 97 && z <= 102 && x >= 60 && x <= 164) || (x >= 89 && x <= 94 && z >= 116 && z <= 129)
+      || (x >= 19 && x <= 23 && z >= 70 && z <= 94) || (x >= 132 && x <= 137 && z >= 60 && z <= 96) || (x >= 98 && x <= 103 && z >= 30 && z <= 37) || (z >= 26 && z <= 29 && x >= 60 && x <= 85);
+    const base = (x, z) => pool(x, z) || moat(x, z) || pond(x, z) ? ['tile', pond(x, z) && (x * 3 + z) % 5 === 0 ? 8 : 1]
+      : plaza(x, z) ? ['tile', (x + z) % 2 ? 4 : PATH] : path(x, z) ? ['tile', PATH] : ['plate', GR];
+    const groups = new Map();
+    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) { const [k, c] = base(x, z), key = k + '|' + c; if (!groups.has(key)) groups.set(key, new Set()); groups.get(key).add(x * 1000 + z); }
+    for (const [key, S] of groups) { const [k, c] = key.split('|'); put(coverPieces(0, 0, W, D, k, +c, (x, z) => S.has(x * 1000 + z))); }
+    const lamp = (x, z) => A('battle:가로등', x, 1, z, 0, 5);
+    const tree = (x, z, c = 3) => A('nature:소나무', x, 1, z, 0, c);
+    const fig = (x, z, r, c, pose, y = 1, kind = '시민') => A('figure:' + kind, x, y, z, r, c, pose);
+    // ---- 정문: 큰 기둥 둘 + 들보, 양옆 매표소(하나는 회전문)
+    for (const x of [82, 98]) for (let y = 1; y < 30; y += 3) fillRect(A, x, 2, 4, 4, y, (y - 1) % 6 ? 2 : 0);
+    for (let z = 2; z < 6; z++) { A(BK(1, 10), 82, 31, z, 1, z % 2 ? 0 : 2); A(BK(1, 10), 92, 31, z, 1, z % 2 ? 2 : 0); }
+    for (const x of [83, 92, 100]) A('battle:깃발', x, 34, 3, 0, [0, 1, 14][(x - 83) % 3]);
+    for (const [x0, rv] of [[70, true], [104, false]]) {
+      for (let i = 0; i < 5; i++) wallLayer(A, x0, 6, 10, 8, 1 + 3 * i, i === 4 ? 0 : 4, (x, z) => rv ? x === x0 + 9 && z >= 8 && z <= 11 : x === x0 && z >= 8 && z <= 11, i % 2);
+      put(coverPieces(x0, 6, 10, 8, 'plate', 0, () => true), 16);
+      if (rv) A('play:회전문', x0 + 8, 1, 8, 0, 1); else A('build:문 1×4', x0, 1, 8, 1, 1);
+      A(BK(1, 4), x0 + 4, 1, 8, 0, 9); fig(x0 + 2, 9, rv ? 3 : 1, 10, {l: 60, r: 20});
+    }
+    // ---- 길가 가로등·나무·꽃
+    for (let z = 10; z <= 82; z += 12) { lamp(85, z); lamp(98, z); }
+    for (let x = 64; x <= 160; x += 12) if (x < 74 || x > 110) { lamp(x, 96); lamp(x, 103); }
+    for (let i = 24; i <= 160; i += 24) { if (i < 66 || i > 116) lamp(i, 13); lamp(i, 170); lamp(13, i); lamp(170, i); }
+    for (let z = 12; z <= 80; z += 8) for (const x of [80, 103]) A('nature:꽃', x, 1, z, 0, (z / 8) % 3 ? 0 : 2);
+    // ---- 분수 광장: 가운데 분수, 물 고리, 불꽃 발사대 6, 스위치 2, 가로등 고리, 아이스크림 가게, 아이들
+    A('play:분수', 90, 1, 98, 0, 12);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + 0.26, x = Math.round(92 + Math.cos(a) * 13), z = Math.round(100 + Math.sin(a) * 13); A('play:불꽃 발사대', x, 1, z, 0, [0, 1, 14, 2, 6, 10][i]); }
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + 0.6; lamp(Math.round(92 + Math.cos(a) * 16.5), Math.round(100 + Math.sin(a) * 16.5)); }
+    A('play:스위치', 84, 1, 88, 0, 0); A('play:스위치', 99, 1, 110, 0, 1);
+    A('furniture:식탁', 102, 1, 92, 0, 10); A('food:아이스크림', 102, 5, 92, 0, 10); A('food:아이스크림', 104, 5, 93, 0, 4); fig(103, 94, 2, 4, {l: 90, r: 20});
+    for (const [x, z, r, c, p] of [[84, 104, 3, 2, {l: 150, r: 150}], [99, 96, 1, 10, {legs: 'run', l: 60, r: -40}], [88, 112, 0, 1, {l: 30, r: 120}], [95, 87, 2, 6, {legs: 'walk'}]]) fig(x, z, r, c, p);
+    A('animal:강아지', 97, 93, 1, 1, 9);
+    // ---- 롤러코스터(서쪽): 승강장 입구 광장에 줄 서는 울타리
+    A('play:롤러코스터', 24, 1, 70, 0, 0);
+    for (let z = 72; z <= 88; z += 4) A('build:울타리 1×4', 21, 1, z, 1, 0);
+    for (const [z, c] of [[74, 1], [79, 10], [84, 2]]) fig(19, z, 3, c, {l: 30, r: 0});
+    A('figure:경찰', 22, 1, 92, 2, 1);
+    // ---- 대관람차(동쪽): 서쪽 탑승 발판(곤돌라 바닥 높이), 줄 선 사람들
+    A('play:대관람차', 142, 1, 62, 0, 0);
+    put(coverPieces(137, 62, 5, 8, 'plate', 4, () => true), 1); put(coverPieces(137, 62, 5, 8, 'plate', 2, () => true), 2);
+    for (const [z, c] of [[72, 0], [76, 6], [80, 14], [86, 1]]) fig(134, z, 2, c, {l: 20, r: 0});
+    lamp(136, 61); lamp(136, 71);
+    // ---- 꼬마 관람차·회전문 없는 쉼터(광장 동쪽)
+    A('play:관람차', 116, 1, 62, 0, 0);
+    for (const [x, z] of [[110, 64], [110, 74], [122, 70]]) { A('furniture:둥근 탁자', x, 1, z, 0, 4); A('food:케이크', x, 5, z, 0, 10); }
+    fig(112, 66, 1, 2, {legs: 'sit'}); fig(120, 72, 3, 0, {l: 150, r: 20});
+    // ---- 엘리베이터 전망대(남서): 모서리 기둥 넷, 62플레이트 전망 바닥, 난간
+    for (const [x, z] of [[60, 34], [70, 34], [60, 44], [70, 44]]) for (let y = 1; y < 61; y += 3) A(BK(2, 2), x, y, z, 0, (y - 1) % 6 ? 4 : 1);
+    put(coverPieces(60, 34, 12, 12, 'plate', 9, (x, z) => !(x >= 64 && x <= 67 && z >= 38 && z <= 41) && !((x <= 61 || x >= 70) && (z <= 35 || z >= 44))), 61);
+    for (const z of [34, 45]) { for (const x of [60, 64]) A('build:울타리 1×4', x, 62, z, 0, 4); A(BK(1, 4), 68, 62, z, 1, 4); }
+    for (const x of [60, 71]) for (const z of [35, 39]) A('build:울타리 1×4', x, 62, z, 1, 4);
+    for (const x of [60, 71]) A(BK(1, 2), x, 62, 43, 0, 4);
+    A('play:엘리베이터 4×4', 64, 1, 38, 0, 2);
+    fig(61, 37, 0, 10, {l: 150, r: 20}, 62); fig(68, 42, 2, 8, {l: 20, r: 60}, 62);
+    A('play:스위치', 66, 1, 31, 0, 0);
+    // ---- 푸드코트(남동): 유리 띠 벽, 서쪽 회전문, 식탁·의자·음식·손님, 지붕 굴뚝
+    const FX = 104, FZ = 40, FW = 24, FD = 18;
+    for (let i = 0; i < 5; i++) wallLayer(A, FX, FZ, FW, FD, 1 + 3 * i, i === 1 || i === 2 ? TRANS : i === 4 ? 6 : 9, (x, z) => x === FX && z >= FZ + 7 && z <= FZ + 10, i % 2);
+    put(coverPieces(FX, FZ, FW, FD, 'plate', 6, () => true), 16);
+    A('play:회전문', FX - 2, 1, FZ + 7, 0, 6); A('play:굴뚝', FX + 20, 17, FZ + 3, 0, 0); A('animal:새', FX + 10, 17, FZ + 9, 0, 5);
+    for (const [tx, tz] of [[FX + 5, FZ + 3], [FX + 13, FZ + 3], [FX + 5, FZ + 11], [FX + 13, FZ + 11]]) {
+      A('furniture:큰 식탁', tx, 1, tz, 0, 4); A('furniture:의자', tx - 2, 1, tz + 1, 3, 0); A('furniture:의자', tx + 4, 1, tz + 1, 1, 0);
+      A('food:피자', tx, 5, tz, 0, 0); A('food:햄버거', tx + 2, 5, tz + 2, 0, 0); A('food:컵', tx + 3, 5, tz, 0, 1);
+    }
+    for (let z = FZ + 2; z <= FZ + 12; z += 4) A(BK(1, 4), FX + 19, 1, z, 0, 0);
+    for (const [k, z] of [['라면', FZ + 2], ['떡볶이', FZ + 6], ['김밥', FZ + 10], ['케이크', FZ + 13]]) A('food:' + k, FX + 19, 4, z, 0, 4);
+    fig(FX + 21, FZ + 4, 3, 4, {l: 60, r: 60}); fig(FX + 21, FZ + 10, 3, 1, {l: 90, r: 20});
+    fig(FX + 9, FZ + 6, 2, 2, {l: 30, r: 90}); fig(FX + 11, FZ + 15, 0, 6, {legs: 'walk'});
+    // ---- 성(북쪽): 해자 위 도개교 셋, 높은 성벽과 여장, 모서리 탑, 안쪽 궁
+    for (let i = 0; i < 7; i++) wallLayer(A, 70, 137, 44, 36, 1 + 3 * i, STONE, (x, z) => i < 6 && z === 137 && x >= 89 && x <= 94, i % 2);
+    for (const z of [137, 172]) for (let x = 72; x <= 110; x += 4) if (z === 172 || x < 86 || x > 96) A(BK(1, 2), x, 22, z, 1, 13);
+    for (const x of [70, 113]) for (let z = 141; z <= 169; z += 4) A(BK(1, 2), x, 22, z, 0, 13);
+    for (const [x, z] of [[66, 175], [114, 175], [66, 133 - 2], [114, 133 - 2]]) { for (let y = 1; y < 28; y += 9) A('round:기둥 2×2', x, y, z, 0, STONE); A('round:고깔 2×2', x, 28, z, 0, 1); }
+    for (const x of [89, 91, 93]) A('play:도개교 2×8', x, 1, 129, 2, WOOD);
+    A('play:스위치', 96, 1, 125, 0, 0); A('play:스위치', 97, 1, 140, 0, 0);
+    for (let i = 0; i < 6; i++) wallLayer(A, 82, 154, 20, 12, 1 + 3 * i, i === 5 ? 1 : 4, (x, z) => z === 154 && x >= 89 && x <= 94 && i < 5, i % 2);
+    A('build:양문 1×6', 89, 1, 154, 0, 0);
+    hipRoof(A, 81, 153, 22, 14, 19, 1, 4);
+    for (const [x, z, r, c, p, k] of [[86, 146, 2, 0, {l: 30, r: 90, ri: 'spear', li: 'shield'}, '기사'], [98, 146, 2, 1, {l: 30, r: 90, ri: 'sword', li: 'shield'}, '기사'], [80, 160, 1, 4, {legs: 'walk'}, '기사'], [97, 124, 2, 1, {}, '군인']]) fig(x, z, r, c, p, 1, k);
+    for (const [x, z] of [[72, 139], [111, 139], [72, 170], [111, 170]]) A('battle:깃발', x, 22, z, 0, 0);
+    A('animal:새', 98, 22, 172, 0, 5);
+    // ---- 농장(북동): 울타리 우리, 동물들, 굴뚝 헛간, 연못의 오리·물고기
+    for (let x = 130; x <= 158; x += 4) { A('build:울타리 1×4', x, 1, 126, 0, 4); if (x !== 142) A('build:울타리 1×4', x, 1, 151, 0, 4); }
+    for (const x of [130, 161]) for (let z = 127; z <= 147; z += 4) A('build:울타리 1×4', x, 1, z, 1, 4);
+    A('animal:소', 134, 1, 130, 0, 5); A('animal:소', 150, 1, 140, 2, 13);
+    for (const [x, z] of [[140, 130], [146, 134]]) A('animal:돼지', x, 1, z, (x + z) % 4, 10);
+    for (const [x, z] of [[136, 142], [138, 146], [152, 130], [155, 146], [142, 138]]) A('animal:닭', x, 1, z, (x + z) % 4, 4);
+    for (const [x, z, c] of [[156, 135, 4], [133, 148, 9], [147, 147, 4]]) A('animal:토끼', x, 1, z, x % 4, c);
+    for (let i = 0; i < 5; i++) wallLayer(A, 140, 158, 12, 10, 1 + 3 * i, WOOD, (x, z) => z === 158 && x >= 144 && x <= 147, i % 2);
+    A('build:문 1×4', 144, 1, 158, 0, 0); put(coverPieces(140, 158, 12, 10, 'plate', 0, () => true), 16); A('play:굴뚝', 141, 17, 165, 0, 0);
+    for (const [x, z, c] of [[167, 139, 4], [171, 142, 2], [174, 138, 4]]) A('animal:오리', x, 1, z, x % 4, c);
+    A('animal:물고기', 171, 1, 136, 0, 6); A('animal:물고기', 168, 1, 141, 1, 0);
+    fig(143, 154, 0, 11, {l: 20, r: 90}); A('animal:강아지', 146, 1, 154, 3, 11); A('animal:고양이', 149, 17, 162, 0, 6);
+    // ---- 소풍 숲(북서): 나무 사이 식탁·의자, 천막, 모닥불, 가족
+    for (const [tx, tz] of [[30, 146], [44, 158], [52, 142]]) { A('furniture:식탁', tx, 1, tz, 0, 11); A('furniture:의자', tx, 1, tz - 2, 2, 11); A('furniture:의자', tx + 2, 1, tz + 2, 0, 11); A('food:수박', tx + 1, 5, tz, 0, 3); }
+    A('battle:천막', 34, 1, 160, 0, 0); A('battle:모닥불', 40, 1, 150, 0, 0);
+    fig(31, 152, 0, 2, {legs: 'sit'}); fig(42, 147, 3, 10, {l: 90, r: 90}); fig(48, 152, 1, 1, {legs: 'run', l: 60, r: -40});
+    A('animal:토끼', 56, 1, 166, 0, 4); A('animal:새', 26, 1, 168, 0, 0);
+    // ---- 나무: 둘레·숲·빈 땅 (구역을 피해서)
+    const TREES = [[4, 4], [4, 30], [4, 60], [4, 96], [4, 130], [4, 176], [30, 4], [56, 4], [130, 4], [156, 4], [176, 4], [176, 30], [176, 60], [176, 96], [176, 130], [176, 176], [130, 177], [100, 177], [56, 177], [24, 177],
+      [26, 136], [38, 140], [48, 136], [60, 140], [26, 172], [40, 172], [52, 170], [62, 158], [24, 152], [58, 150],
+      [24, 24], [36, 26], [48, 30], [26, 36], [76, 50], [76, 64], [76, 78], [108, 104], [120, 108], [120, 84], [150, 108], [156, 116], [124, 120], [62, 108], [70, 116], [62, 124], [78, 124],
+      [158, 26], [150, 30], [160, 40], [126, 24], [160, 56], [104, 116]];
+    TREES.forEach(([x, z], i) => tree(x, z, [3, 3, 10, 3, 6, 3, 0][i % 7]));
+    // ---- 걷는 사람들
+    for (const [x, z, r, c, k] of [[88, 30, 0, 1], [94, 50, 2, 6], [90, 70, 0, 14], [120, 98, 1, 2], [70, 100, 3, 0], [150, 101, 3, 10, '경찰'], [16, 120, 0, 4], [167, 60, 2, 1], [60, 16, 1, 6], [120, 166, 3, 2], [91, 120, 0, 8]]) fig(x, z, r, c, {legs: 'walk'}, 1, k || '시민');
+    // ---- 경주 코스 깃발 8개 (놀이 상자 → 경주): 정문 옆에서 출발해 둘레 길을 한 바퀴
+    for (const [x, z] of [[101, 14], [162, 21], [162, 100], [162, 162], [100, 162], [21, 162], [21, 60], [60, 21]]) A('battle:깃발', x, 1, z, 0, 2);
   }},
   {id: 'haebang', name: '경리단길·해방촌 (축소 모형)', lv: '어려움', desc: '경리단길 오르막과 양옆 가게, 계단식으로 빼곡한 해방촌 집들과 108계단, 오거리·신흥시장, 소월로와 숲 위의 남산타워까지 동네 전체를 작게 담았어요.', build(A) {
     const road = z => 3 + Math.round(z * 12 / 35);
@@ -6268,7 +6388,7 @@ $('btnRec').addEventListener('click', toggleRec);
 $('recStop').addEventListener('click', toggleRec);
 
 // ==== 놀이 상자 (v41): 부수기(지진·대포알) · 보물찾기·숨바꼭질·경주·배지 · 움직이는 장치 · 날씨·시간 흐름·말풍선·불꽃놀이·동물
-var PLAY = {gen: 0, cannon: false, quakeT: 0, quakeWaves: [], quakeHist: null, shake: 0, talk: true, wx: 'clear', timeOn: false, phase: 0.2, dirty: true, missionT: 0, snow: 0, rainbow: 0, skyOn: false};
+var PLAY = {clock: 0, gen: 0, cannon: false, quakeT: 0, quakeWaves: [], quakeHist: null, shake: 0, talk: true, wx: 'clear', timeOn: false, phase: 0.2, dirty: true, missionT: 0, snow: 0, rainbow: 0, skyOn: false};
 const playRoot = new THREE.Group(); scene.add(playRoot);
 let game = null;
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -6573,6 +6693,8 @@ const MISSIONS = [
   ['lift', '🛗', '엘리베이터', '1인칭으로 엘리베이터 타고 올라가기'],
   ['switch', '🔘', '딸깍', '스위치 밟거나 누르기'],
   ['fireworks', '🎆', '불꽃 구경', '불꽃놀이 보기'],
+  ['ferris', '🎡', '대관람차', '대관람차를 타고 높이 올라가기'],
+  ['coaster', '🎢', '롤러코스터', '롤러코스터 타고 빠르게 내려가기'],
   ['nightwalk', '🌙', '밤 산책', '밤에 1인칭으로 20초 걷기', () => [Math.min(20, Math.floor(badgeData.n.nightwalk || 0)), 20]],
   ['snowwalk', '⛄', '눈길 산책', '눈 오는 날 1인칭으로 15초 걷기', () => [Math.min(15, Math.floor(badgeData.n.snowwalk || 0)), 15]]
 ];
@@ -6634,7 +6756,7 @@ function floating() {
 function fling(list, origin, power, hist) {
   const removed = [], self = fpSelf();
   for (const b of list) {
-    if (!b._ix || b === self || (game && game.tempFig === b) || (fp && fp.b === b)) continue;
+    if (!b._ix || b === self || (game && game.tempFig === b) || (fp && fp.b === b) || BIG.has(TYPES[b.t].kind)) continue;
     if (devs.has(b)) devRemove(devs.get(b));
     removeBrick(b); removed.push(b);
     const m = b.mesh; if (!m) continue;
@@ -6745,7 +6867,7 @@ function shakeOn() {
 function shakeOff(o) { if (o) camera.position.sub(o); }
 
 // ---- 움직이는 장치: ▶ 돌리기를 켜거나 1인칭일 때 엘리베이터·회전문·도개교·관람차가 움직임
-function isDevKind(k) { return k === 'lift' || k === 'revolve' || k === 'drawbridge' || k === 'ferris'; }
+function isDevKind(k) { return k === 'lift' || k === 'revolve' || k === 'drawbridge' || k === 'ferris' || k === 'bigferris' || k === 'coaster'; }
 const devs = new Map();
 let devOn = false;
 function basePose(b) { const t = TYPES[b.t]; b.mesh.position.set(b.x + b.w / 2, b.y * PH + (t.pivotY || 0), b.z + b.d / 2); b.mesh.rotation.set(0, -b.r * Math.PI / 2, 0); }
@@ -6767,8 +6889,9 @@ function devAdd(b) {
   const t = TYPES[b.t], d = {b, kind: t.kind, t: 0};
   setDyn(b, 'dev', true);
   if (t.kind === 'lift') { d.stops = liftStops(b); d.i = 0; d.dir = 1; d.off = 0; d.wait = 1.5; }
-  if (t.kind === 'drawbridge') { d.a = 0; d.phase = 0; d.cyc = rnd(0, 3); if (b._hold !== undefined) d.hold = b._hold ? 'up' : 'down'; }
-  if (t.kind === 'ferris') {
+  if (t.kind === 'drawbridge') { d.a = 0; d.phase = 0; d.cyc = rnd(0, 3); if (b._hold !== undefined) d.hold = b._hold ? 'up' : 'down'; else if (bricksNear(b.x - 24, b.z - 24, b.x + 24, b.z + 24, false).some(o => TYPES[o.t].kind === 'switch')) d.hold = 'down'; }   // 둘레에 스위치가 있으면 눌러야 올라감
+  if (BIG.has(t.kind)) bigAdd(b, d);
+  else if (t.kind === 'ferris') {
     b.mesh.geometry = multiGeo(t, b.c, 'legs');
     const w = new THREE.Mesh(multiGeo(t, b.c, 'wheel'), vcMat()); w.position.set(0, 9.6, 0); w.castShadow = true; b.mesh.add(w); d.wheel = w; d.gs = [];
     for (let i = 0; i < 8; i++) { const g = new THREE.Mesh(multiGeo(t, b.c, 'gond' + (i % 4)), vcMat()); g.castShadow = true; b.mesh.add(g); d.gs.push(g); }
@@ -6777,7 +6900,8 @@ function devAdd(b) {
 }
 function devRemove(d) {
   const b = d.b; b._lift = 0; b._dbA = 0;
-  if (d.wheel) { b.mesh.remove(d.wheel); d.gs.forEach(g => b.mesh.remove(g)); b.mesh.geometry = geoFor(TYPES[b.t], b.c); }
+  if (BIG.has(d.kind)) { bigRemove(d); b.mesh.geometry = geoFor(TYPES[b.t], b.c); }
+  else if (d.wheel) { b.mesh.remove(d.wheel); d.gs.forEach(g => b.mesh.remove(g)); b.mesh.geometry = geoFor(TYPES[b.t], b.c); }
   if (b.mesh) { basePose(b); b.mesh.updateMatrixWorld(true); }
   setDyn(b, 'dev', false); devs.delete(b);
 }
@@ -6787,10 +6911,12 @@ function devSync() {
   for (const d of devs.values()) if (d.kind === 'lift') d.stops = liftStops(d.b);
 }
 function devStep(dt) {
-  const w = fp && fp.walk;
+  EXTRA.length = 0;
+  const w = fp && fp.walk && !fp.ride ? fp.walk : null;
   for (const d of devs.values()) {
     const b = d.b; if (!b.mesh) continue;
     d.t += dt;
+    if (BIG.has(d.kind)) { bigStep(d, dt); continue; }
     if (d.kind === 'lift') {
       if (d.stops.length < 2) continue;
       const prev = d.off;
@@ -6828,6 +6954,7 @@ function devStep(dt) {
 }
 // 걷는 피규어가 부딪히는 상자: 엘리베이터는 지금 높이, 회전문은 기둥과 지붕만, 도개교는 들린 각도대로
 function devBoxes(o, t) {
+  if (t.kind === 'bigferris' || t.kind === 'coaster') return [];   // 기둥·곤돌라·승강장은 EXTRA로
   const [x0, x1, y0, y1, z0, z1] = exactBox(o);
   if (t.kind === 'lift') { const l = o._lift || 0; return [[x0, x1, y0 + l, y1 + l, z0, z1]]; }
   if (t.kind === 'revolve') { const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, H = t.h * PH; return [[cx - 0.2, cx + 0.2, y0, y0 + H, cz - 0.2, cz + 0.2], [x0, x1, y0 + H - 0.4, y0 + H, z0, z1]]; }
@@ -7192,8 +7319,138 @@ function setWeather(w) {
   toast({rain: '🌧 비가 와요', snow: '❄ 눈이 와요 · 지붕에 하얗게 쌓여요', clear: was === 'rain' ? '☀ 비가 그쳤어요 · 무지개가 떴어요' : '☀ 맑아요', rainbow: '🌈 무지개가 떴어요'}[w]);
 }
 
+// ---- 대관람차·롤러코스터 (v42): 1인칭으로 타기
+var EXTRA = [];   // 걷는 피규어가 부딪히는 움직이는 상자(곤돌라·기둥·승강장), [x0,x1,y0,y1,z0,z1] 세계 좌표
+const BIG = new Set(['bigferris', 'coaster']);
+let rideCool = 0;
+function wbox(b, x0, x1, y0, y1, z0, z1) { const th = -b.r * Math.PI / 2, cx = b.x + b.w / 2, cz = b.z + b.d / 2, y = b.y * PH, a = rotXZ(x0, z0, th), c = rotXZ(x1, z1, th); return [cx + Math.min(a[0], c[0]), cx + Math.max(a[0], c[0]), y + y0, y + y1, cz + Math.min(a[1], c[1]), cz + Math.max(a[1], c[1])]; }
+function toLocal(b, p) { const r = rotXZ(p.x - b.x - b.w / 2, p.z - b.z - b.d / 2, b.r * Math.PI / 2); return [r[0], p.y - b.y * PH, r[1]]; }
+function toWorld(b, x, y, z) { const r = rotXZ(x, z, -b.r * Math.PI / 2); return new THREE.Vector3(b.x + b.w / 2 + r[0], b.y * PH + y, b.z + b.d / 2 + r[1]); }
+function bigAdd(b, d) {
+  const t = TYPES[b.t];
+  d.sbox = [];
+  if (t.kind === 'bigferris') {
+    b.mesh.geometry = multiGeo(t, b.c, 'legs');
+    const w = new THREE.Mesh(multiGeo(t, b.c, 'wheel'), vcMat()); w.position.set(0, BF.HUB, 0); w.castShadow = true; b.mesh.add(w); d.wheel = w; d.cabs = [];
+    for (let i = 0; i < BF.N; i++) { const m = new THREE.Mesh(multiGeo(t, b.c, 'cab' + (i % 8)), vcMat()); m.castShadow = true; b.mesh.add(m); d.cabs.push(m); }
+    d.phi = 0; d.prog = 0; d.pause = 4;
+    for (const sx of [-6.5, 6.5]) for (const sz of [-1, 1]) for (let k = 0; k < 8; k++) { const y0 = BF.HUB * k / 8, y1 = BF.HUB * (k + 1) / 8, z0 = sz * 22 * (1 - k / 8), z1 = sz * 22 * (1 - (k + 1) / 8); d.sbox.push(wbox(b, sx - 0.35, sx + 0.35, y0, y1, Math.min(z0, z1) - 0.35, Math.max(z0, z1) + 0.35)); }
+  } else {
+    const C = coasterCurve();
+    b.mesh.geometry = multiGeo(t, b.c, 'track');
+    d.cars = [0, 1].map(i => { const m = new THREE.Mesh(multiGeo(t, i ? 1 : b.c, 'car'), vcMat()); m.castShadow = true; b.mesh.add(m); return m; });
+    // 뒤 칸에 손 든 손님 둘
+    const fig = TYPES.find(q => q.kind === 'minifig');
+    for (const [sx, c] of [[-0.6, 2], [0.6, 10]]) { const m = new THREE.Mesh(geoFor(fig, c, {legs: 'sit', l: 165, r: 165}), vcMat()); m.position.set(sx, 0.4, 0.55); m.scale.setScalar(0.62); d.cars[1].add(m); }
+    d.u = C.us; d.v = 0; d.wait = 8; d.leaving = false;
+    d.sbox.push(wbox(b, -3, 0, 0, 1.2, -12, 12), wbox(b, -4, -3, 0, 0.6, -12, 12), wbox(b, 3.1, 3.35, 0, 2.8, -12, 12));
+    for (const sx of [-3.4, 3.4]) for (const sz of [-9, 9]) d.sbox.push(wbox(b, sx - 0.25, sx + 0.25, 0, 6.6, sz - 0.25, sz + 0.25));
+    for (let i = 0; i < 900; i += 12) { const p = C.curve.getPointAt(i / 900); if (p.y > 1.6) d.sbox.push(wbox(b, p.x - 0.25, p.x + 0.25, 0, p.y - 0.5, p.z - 0.25, p.z + 0.25)); }
+  }
+}
+function bigRemove(d) { const b = d.b; for (const m of [d.wheel, ...(d.cabs || []), ...(d.cars || [])]) if (m) b.mesh.remove(m); if (d.rider && fp && fp.ride) rideOff(); }
+const _cv = new THREE.Vector3(), _cm = new THREE.Matrix4(), _up = new THREE.Vector3(0, 1, 0);
+function carPose(u, out) {
+  const C = coasterCurve(), p = C.curve.getPointAt(u), T = C.curve.getTangentAt(u), side = new THREE.Vector3(T.z, 0, -T.x).normalize(), y2 = new THREE.Vector3().crossVectors(T, side);
+  out.position.copy(p); out.quaternion.setFromRotationMatrix(_cm.makeBasis(side, y2, T));
+}
+function bigStep(d, dt) {
+  const b = d.b, w = fp && fp.walk && !fp.ride ? fp.walk : null;
+  if (d.kind === 'bigferris') {
+    const slot = Math.PI * 2 / BF.N, piv = i => { const a = i * slot + d.phi; return [BF.HUB - BF.R * Math.cos(a), BF.R * Math.sin(a), a]; };
+    // 서 있는 곳: 움직이기 전 곤돌라 바닥 위
+    let on = -1;
+    if (w && w.feet !== undefined) {
+      const [cx, cz] = figFoot(w, w.P, w.th), [lx, ly, lz] = toLocal(b, new THREE.Vector3(cx, w.feet, cz));
+      for (let i = 0; i < BF.N; i++) { const [py, pz] = piv(i); if (Math.abs(ly - (py - 6.1)) < 0.2 && Math.abs(lx) < 3 && Math.abs(lz - pz) < 2.5) { on = i; break; } }
+    }
+    const before = on >= 0 ? piv(on) : null;
+    if (d.pause > 0) d.pause -= dt;
+    else { let st = slot / 3.5 * dt; d.prog += st; if (d.prog >= slot) { st -= d.prog - slot; d.prog = 0; d.pause = 5; } d.phi += st; }
+    d.wheel.rotation.x = -d.phi;
+    for (let i = 0; i < BF.N; i++) {
+      const [py, pz, a] = piv(i); d.cabs[i].position.set(0, py, pz);
+      const open = d.pause > 0 && Math.cos(a) > 0.999;
+      EXTRA.push(wbox(b, -3, 3, py - 6.4, py - 6.1, pz - 2.5, pz + 2.5), wbox(b, -3, 3, py - 6.1, py - 0.6, pz + 2.25, pz + 2.5), wbox(b, -3, 3, py - 6.1, py - 0.6, pz - 2.5, pz - 2.25), wbox(b, 2.75, 3, py - 6.1, py - 0.6, pz - 2.5, pz + 2.5), wbox(b, -3.2, 3.2, py - 0.9, py - 0.6, pz - 2.7, pz + 2.7));
+      if (!open) EXTRA.push(wbox(b, -3, -2.8, py - 6.1, py - 4.4, pz - 2.5, pz + 2.5));
+    }
+    if (before) {
+      const after = piv(on), dl = rotXZ(0, after[1] - before[1], -b.r * Math.PI / 2), dy = after[0] - before[0];
+      w.P = [w.P[0] + dl[0], w.P[1] + dl[1]]; w.feet += dy; w.vy = 0; w.grounded = true;
+      if (after[0] - 6.1 > 20) earn('ferris');
+    }
+  } else {
+    const C = coasterCurve(), L = C.L;
+    if (d.wait > 0) {
+      d.wait -= dt;
+      // 타기: 서 있는 차 쪽으로 걸어 들어가면
+      if (w && w.feet !== undefined && PLAY.clock > rideCool && d.wait > 0.3) {
+        const [cx, cz] = figFoot(w, w.P, w.th), [lx, ly, lz] = toLocal(b, new THREE.Vector3(cx, w.feet, cz)), p0 = C.curve.getPointAt(C.us);
+        if (lx > -0.5 && lx < 3.4 && lz > p0.z - C.gap - 2.4 && lz < p0.z + 2.4 && ly > 0.4 && ly < 2.4) {
+          fp.ride = {d, yaw: 0}; d.rider = true; d.wait = Math.min(d.wait, 1.6); ctrl.throttle = ctrl.steer = 0;
+          toast('🎢 출발해요! 한 바퀴 돌고 승강장에 내려 줘요 · 끌어서 둘러보기 · Esc 내리기');
+          $('fpLabel').textContent = '🎢 롤러코스터 타는 중'; $('fpHelp').textContent = '끌어서 둘러보기 · 한 바퀴 돌면 내려요';
+        }
+      }
+      if (d.wait <= 0) { d.v = 3; d.leaving = true; if (d.rider) chime([392, 523, 659], 0.12, 'square', 0.04); }
+    } else {
+      const y = C.curve.getPointAt(d.u).y, ahead = ((C.us - d.u + 1) % 1) * L, gone = ((d.u - C.us + 1) % 1) * L;
+      let v;
+      if (d.leaving && gone > 18) d.leaving = false;
+      if (d.u >= C.uLift && d.u <= C.uTop) v = 5;
+      else if (d.leaving || d.u < C.uLift) v = 3.5;
+      else v = 0.85 * Math.sqrt(9 + 2 * 14 * Math.max(0, C.hTop - y));
+      const back = !d.leaving && (d.u > C.uTop || d.u <= C.us);   // 한 바퀴 돌고 승강장으로 들어오는 중
+      if (back && ahead < 30) v = Math.min(v, 0.6 + ahead * 0.45);
+      d.v += Math.max(-25 * dt, Math.min(12 * dt, v - d.v));
+      if (back && ahead < Math.max(0.05, d.v * dt)) { d.u = C.us; d.v = 0; d.wait = 7; if (d.rider) rideOff(); }
+      else d.u = (d.u + d.v * dt / L) % 1;
+      if (d.rider && d.v > 18) earn('coaster');
+      if (d.rider && d.v > 14 && Math.random() < dt * 3) noise(0.2, 0.05, 700);
+    }
+    d.cars.forEach((m, i) => carPose((d.u - i * C.gap / L + 1) % 1, m));
+    for (const B of d.sbox) EXTRA.push(B);
+    if (!(d.wait > 0)) EXTRA.push(wbox(b, -0.15, 0.05, 1.2, 2.8, -12, 12));   // 차가 없을 때는 승강장 문이 닫힘
+    else { const z0 = C.curve.getPointAt(C.us).z; EXTRA.push(wbox(b, 0.05, 3.1, 0, 1.2, z0 - C.gap - 2.2, z0 + 2.2)); }   // 서 있는 차 바닥은 밟힘
+  }
+  if (d.kind === 'bigferris') for (const B of d.sbox) EXTRA.push(B);
+}
+// 롤러코스터에서 내리기: 승강장(차 옆)에 세움
+function rideOff() {
+  const f = fp; if (!f || !f.ride) return;
+  const d = f.ride.d, b = d.b, C = coasterCurve(), p0 = C.curve.getPointAt(C.us), w = f.walk;
+  const q = toWorld(b, -1.6, 1.2, p0.z);
+  if (w) { const [cx, cz] = figFoot(w, w.P, w.th); w.P = [w.P[0] + q.x - cx, w.P[1] + q.z - cz]; w.feet = q.y; w.vy = 0; w.grounded = true; }
+  f.ride = null; d.rider = false; rideCool = PLAY.clock + 3.5; f.camY = undefined;
+  $('fpLabel').textContent = TYPES[f.b.t].name + ' 시점'; $('fpHelp').textContent = matchMedia('(pointer: coarse)').matches ? '화면을 끌어 방향 · 버튼으로 앞뒤·옆으로 걷기' : '드래그로 방향 · W/S 앞뒤 · A/D 옆으로 · 스페이스 점프 · G 빠르기'; fpHelpText();
+  toast('승강장에 내렸어요 · 차 쪽으로 다시 걸어가면 또 탈 수 있어요');
+}
+// 타는 동안: 앞 칸 의자 눈높이에서 선로 방향을 봄(끌어서 둘러보기)
+const _re = new THREE.Vector3(), _rd = new THREE.Vector3();
+function rideCam() {
+  const f = fp, d = f.ride.d, car = d.cars[0];
+  car.updateMatrixWorld(true);
+  _re.set(0, 2.9, 0.6); car.localToWorld(_re);
+  f.ride.yaw = Math.max(-2.6, Math.min(2.6, f.ride.yaw + f.yaw)); f.yaw = 0;
+  _rd.set(0, 0, 1).applyQuaternion(car.getWorldQuaternion(new THREE.Quaternion()));
+  _rd.applyAxisAngle(_up, f.ride.yaw); _rd.y += Math.sin(f.pitch + 0.06);
+  camera.position.copy(_re); camera.lookAt(_re.x + _rd.x, _re.y + _rd.y, _re.z + _rd.z);
+  if (f.b.mesh) { f.b.mesh.position.copy(_re).y -= 2.9; }
+}
+var CC = null;
+function coasterCurve() {
+  if (CC) return CC;
+  const pts = [[1.5, 0.8, -12], [1.5, 0.8, 0], [1.5, 0.8, 10], [1.5, 3, 18], [1.5, 14, 28], [1.5, 26, 38], [4, 29, 44], [11, 29.5, 47], [18, 27, 44], [22, 18, 36], [24, 4, 26], [26, 12, 16], [27, 13, 10], [28, 4, 0], [28, 10, -10], [27, 11, -15], [26, 3, -24], [22, 6, -32], [14, 8, -37], [6, 5, -35], [2, 1.5, -26], [1.5, 0.8, -18]].map(p => new THREE.Vector3(...p));
+  const curve = new THREE.CatmullRomCurve3(pts, true, 'centripetal'), L = curve.getLength();
+  const near = (q, from = 0, to = 1) => { let best = 0, bd = Infinity; for (let i = Math.round(from * 2000); i <= Math.round(to * 2000); i++) { const d = curve.getPointAt((i % 2000) / 2000).distanceTo(q); if (d < bd) { bd = d; best = (i % 2000) / 2000; } } return best; };
+  let uTop = 0, hTop = -1; for (let i = 0; i < 2000; i++) { const y = curve.getPointAt(i / 2000).y; if (y > hTop) { hTop = y; uTop = i / 2000; } }
+  CC = {curve, L, us: near(new THREE.Vector3(1.5, 0.8, 0), 0, 0.3), uLift: near(new THREE.Vector3(1.5, 3, 18), 0, 0.4), uTop, hTop, gap: 4.6};
+  return CC;
+}
+
 // ---- 매 프레임
 function playFrame(dt, now) {
+  PLAY.clock += dt;
   if (PLAY.quakeT > 0) {
     const el = 3.2 - PLAY.quakeT; PLAY.quakeT -= dt;
     while (PLAY.quakeWaves.length && el >= PLAY.quakeWaves[0]) { PLAY.quakeWaves.shift(); quakeWave(); }
@@ -7203,10 +7460,11 @@ function playFrame(dt, now) {
   if (debris.length) debrisStep(dt);
   if (balls.length) ballStep(dt);
   if (rockets.length || fws.length) fireworkStep(dt);
-  if (PLAY.dirty) { PLAY.dirty = false; snowDirty = true; ambientSync(); if (devOn) devSync(); PLAY.missionT = Math.min(PLAY.missionT, 0.8); }
+  if (PLAY.dirty) { PLAY.dirty = false; snowDirty = true; ambientSync(); for (const b of bricks) if (BIG.has(TYPES[b.t].kind)) setDyn(b, 'big', true); if (devOn) devSync(); PLAY.missionT = Math.min(PLAY.missionT, 0.8); }
   const want = spinning || !!fp;
-  if (want && !devOn) { devOn = true; devSync(); } else if (!want && devOn) { devOn = false; for (const d of [...devs.values()]) devRemove(d); }
+  if (want && !devOn) { devOn = true; devSync(); } else if (!want && devOn) { devOn = false; for (const d of [...devs.values()]) devRemove(d); EXTRA.length = 0; }
   if (devOn) devStep(dt);
+  if (fp && fp.ride) rideCam();
   if (critters.length) critterStep(dt);
   if (fp) switchStep();
   gameStep(dt, now);
