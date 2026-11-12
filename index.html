@@ -535,8 +535,8 @@ body.fp .bp{display:none!important}
 (() => {
 'use strict';
 // ---- 규격: 스터드 간격 1, 플레이트 높이 0.4, 브릭 = 플레이트 3장 (실제 레고 8mm : 3.2mm : 9.6mm 비율)
-const PH = 0.4, G = 0.025, MAXH = 240;
-const BOARD_SIZES = [32, 48, 64, 96, 128, 192];
+const PH = 0.4, G = 0.025, MAXH = 480;
+const BOARD_SIZES = [32, 48, 64, 96, 128, 192, 384];
 const CATS = [['brick','브릭'],['plate','플레이트'],['tile','타일'],['slope','경사'],['round','원형'],['build','건축'],['side','옆붙임'],['nature','자연'],['figure','피규어'],['battle','전투'],['technic','테크닉'],['furniture','가구'],['food','음식'],['play','놀이'],['animal','동물']];
 const TYPES = [];
 const def = (cat, kind, w, d, h, name, extra) => TYPES.push(Object.assign({id: TYPES.length, cat, kind, w, d, h, name}, extra));
@@ -642,6 +642,7 @@ const COLORS = [
   ['하늘','#36aebf'],['베이지','#e4cd9e'],['분홍','#fc97ac'],['갈색','#583927'],['회색','#a0a5a9'],['진회색','#6c6e68'],['보라','#81007b'],['투명','#c9e7f5'],
 ];
 const TRANS = 15; // 투명 색 인덱스
+let restoring = false;   // 압축된 자동 저장을 푸는 동안은 덮어쓰지 않음
 const SAVE_KEY = 'brick-gongbang-v3', V2_KEY = 'brick-gongbang-v2', OLD_KEY = 'brick-gongbang-v1';
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -695,6 +696,17 @@ function studGeo(r, h, seg) {
 }
 const studGeoBase = studGeo(0.3, 0.18, 12);
 let base = null;
+// 그림자 범위: 192판까지는 판 전체를 한 장에, 그보다 크면 보고 있는 곳 둘레 ±104만 그려 선명하게 (멀리 가면 따라옴)
+const SH_HALF = 104;
+let shC = null;
+function aimShadow(cx, cz, n = board) {
+  const half = n / 2, s = Math.min(half + 6, SH_HALF), D = Math.min(n, 192), lim = Math.max(0, half + 6 - s);
+  cx = Math.max(-lim, Math.min(lim, cx)); cz = Math.max(-lim, Math.min(lim, cz));
+  Object.assign(sun.shadow.camera, {left: -s, right: s, top: s, bottom: -s, near: 1, far: D * 3 + MAXH * PH});
+  sun.shadow.camera.updateProjectionMatrix();
+  sun.position.set(cx + D * 0.45, D, cz + D * 0.3); sun.target.position.set(cx, 0, cz); sun.target.updateMatrixWorld();
+  shC = [cx, cz]; shadowDirty = true;
+}
 function buildBoard(n) {
   if (base) { scene.remove(base); base.geometry.dispose(); }
   const half = n / 2;
@@ -704,15 +716,12 @@ function buildBoard(n) {
   for (let cx = Math.floor(-half / CH); cx * CH < half; cx++) for (let cz = Math.floor(-half / CH); cz * CH < half; cz++) getChunk(cx, cz);
   for (const ch of chunks.values()) ch.dirty = true;
   shadowDirty = true;
-  const s = half + 6;
-  Object.assign(sun.shadow.camera, {left:-s, right:s, top:s, bottom:-s, near:1, far:n * 3});
-  sun.shadow.camera.updateProjectionMatrix();
+  shC = null; aimShadow(0, 0, n);
   const ms = n > 48 ? 4096 : 2048;
   if (sun.shadow.mapSize.x !== ms) { sun.shadow.mapSize.set(ms, ms); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
-  sun.position.set(n * 0.45, n, n * 0.3);
   scene.fog.near = n * 1.6; scene.fog.far = n * 4.5;
   controls.maxDistance = n * 2.6;
-  camera.far = Math.max(600, n * 6); camera.updateProjectionMatrix();
+  camera.far = Math.max(600, n * 4.5); camera.updateProjectionMatrix();
   document.getElementById('boardLabel').textContent = n + '×' + n;
   buildBench();
 }
@@ -2524,7 +2533,7 @@ function undo() {
   else if (a.op === 'gmove') { a.to.forEach(removeBrick); a.from.forEach(b => addBrick(b, false)); }
   else if (a.op === 'drive') { for (let i = a.moves.length - 1; i >= 0; i--) { const [b, prev] = a.moves[i]; removeBrick(b); Object.assign(b, prev); b.spin = 0; addBrick(b, false); } }
   else if (a.op === 'board') { board = a.from; buildBoard(board); }
-  else if (a.op === 'place') { a.list.forEach(removeBrick); if (board !== a.boardBefore) { board = a.boardBefore; buildBoard(board); } }
+  else if (a.op === 'place') { a.list.forEach(removeBrick); if (a.shift) shiftAll(-a.shift[0], -a.shift[1]); if (board !== a.boardBefore) { board = a.boardBefore; buildBoard(board); } }
   else if (a.op === 'replace') { a.after.forEach(removeBrick); if (board !== a.boardBefore) { board = a.boardBefore; buildBoard(board); } a.before.forEach(b => addBrick(b, false)); }
   changed();
 }
@@ -2559,7 +2568,7 @@ function changed() {
   document.getElementById('count').textContent = '블럭 ' + bricks.length + '개';
   document.getElementById('btnUndo').disabled = !history.length;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(packScene())); } catch (e) {} }, 300);
+  if (!restoring) saveTimer = setTimeout(async () => { try { localStorage.setItem(SAVE_KEY, await zpack(JSON.stringify(packScene()))); } catch (e) {} }, 300);
   if (lastPointer) updateHover(...lastPointer);
   computeGears();
   if (spinning) computeVehicles();
@@ -3247,7 +3256,7 @@ function setBoardSize(next) {
   changed();
   toast('기본 판을 ' + next + '×' + next + '로 바꿨어요');
 }
-const BOARD_LABEL = {32: '작게', 48: '기본', 64: '넓게', 96: '아주 넓게', 128: '거대하게', 192: '최대'};
+const BOARD_LABEL = {32: '작게', 48: '기본', 64: '넓게', 96: '아주 넓게', 128: '거대하게', 192: '아주 거대하게', 384: '최대'};
 function openBoardMenu() {
   const m = $('boardMenu');
   if (!m.hidden) { m.hidden = true; return; }
@@ -3399,6 +3408,11 @@ function seed() {
 function loadSaved() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
+    if (raw && raw.startsWith('z1:')) {   // 압축된 큰 작품: 판만 먼저 깔고, 풀리면 채움
+      restoring = true;
+      zunpack(raw).then(txt => { const sc = unpackScene(JSON.parse(txt)); board = sc.board; buildBoard(board); sc.list.forEach(o => addBrick(o, false)); restoring = false; changed(); }).catch(() => { restoring = false; });
+      buildBoard(board); return true;
+    }
     if (raw) {
       const s = JSON.parse(raw);
       if (s.app) { const sc = unpackScene(s); board = sc.board; buildBoard(board); sc.list.forEach(o => addBrick(o, false)); return true; }
@@ -3512,9 +3526,24 @@ async function initStore() {
     }, () => { clearTimeout(timer); store.loading = false; store.error = true; renderSlots(); });
   } catch (e) { /* 계정 저장을 못 쓰면 브라우저 저장으로 계속 */ }
 }
+// 큰 작품은 압축해서 저장 (브라우저가 지원하면): 'z1:' + base64(deflate-raw(JSON))
+function canZip() { return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function'; }   // 초기화 중에도 부를 수 있게 함수로
+async function zpack(str) {
+  if (!canZip() || str.length < 60000) return str;
+  const buf = await new Response(new Blob([str]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer(), u = new Uint8Array(buf);
+  let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return 'z1:' + btoa(bin);
+}
+async function zunpack(str) {
+  if (typeof str !== 'string' || !str.startsWith('z1:')) return str;
+  if (!canZip()) throw new Error('nozip');
+  const bin = atob(str.slice(3)), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+}
 const fmtDate = at => { try { return new Date(at).toLocaleString('ko-KR', {month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}); } catch (e) { return ''; } };
 function makeItem(name) { return {name, at: Date.now(), n: bricks.length, board, thumb: snapshotThumb(), data: JSON.stringify(packScene())}; }
 async function writeItem(item, id) {
+  item.data = await zpack(item.data);
   if (item.data.length > 240000) { toast('작품이 너무 커서 보관함에 못 넣어요 · 파일로 내보내 주세요'); return false; }
   if (store.mode === 'db') {
     try { await (id ? store.col.doc(id) : store.col.doc()).set(item); return true; }
@@ -3552,8 +3581,8 @@ function renderSlots() {
     const meta = document.createElement('span'); meta.className = 'meta'; meta.textContent = '블럭 ' + (it.n | 0) + '개 · 판 ' + (it.board | 0) + '×' + (it.board | 0) + ' · ' + fmtDate(it.at);
     const acts = document.createElement('div'); acts.className = 'acts';
     const bLoad = document.createElement('button'); bLoad.className = 'load'; bLoad.textContent = '불러오기';
-    bLoad.addEventListener('click', () => {
-      try { replaceScene(unpackScene(JSON.parse(it.data))); closeSheet(); toast('"' + nm.textContent + '"을(를) 불러왔어요 · 되돌리기로 이전 상태로 돌아갈 수 있어요'); }
+    bLoad.addEventListener('click', async () => {
+      try { replaceScene(unpackScene(JSON.parse(await zunpack(it.data)))); closeSheet(); toast('"' + nm.textContent + '"을(를) 불러왔어요 · 되돌리기로 이전 상태로 돌아갈 수 있어요'); }
       catch (e) { toast('이 작품을 읽지 못했어요'); }
     });
     const bOver = document.createElement('button'); bOver.textContent = '덮어쓰기';
@@ -5989,7 +6018,19 @@ function findSpot(list) {
     if (best) return best;
   }
   if (gap) { delete gap.d; return gap; }
+  // 그래도 없으면: 더 큰 판에서 지금 작품을 한쪽으로 밀고 나란히 (가로 또는 세로)
+  const ew = ex1 - ex0, ed = ez1 - ez0, G2 = 3;
+  for (const n of BOARD_SIZES.filter(n => n >= board)) {
+    const h = n / 2 - 1;
+    if (ew + G2 + mw <= 2 * h && Math.max(ed, md) <= 2 * h) { const st = -Math.floor((ew + G2 + mw) / 2); return {board: n, shift: [st - ex0, -Math.floor(ed / 2) - ez0], dx: st + ew + G2 - mx0, dz: -Math.floor(md / 2) - mz0}; }
+    if (ed + G2 + md <= 2 * h && Math.max(ew, mw) <= 2 * h) { const st = -Math.floor((ed + G2 + md) / 2); return {board: n, shift: [-Math.floor(ew / 2) - ex0, st - ez0], dx: -Math.floor(mw / 2) - mx0, dz: st + ed + G2 - mz0}; }
+  }
   return null;
+}
+// 지금 작품 전체를 옮기기 (옆붙임 상자도 같이)
+function shiftAll(dx, dz) {
+  if (!dx && !dz) return;
+  for (const b of bricks.slice()) { removeBrick(b); b.x += dx; b.z += dz; if (b.sn) { b.sn.box[0] += dx; b.sn.box[1] += dx; b.sn.box[4] += dz; b.sn.box[5] += dz; } addBrick(b, false); }
 }
 function focusOn(list) {
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
@@ -6006,8 +6047,9 @@ function placeBeside(list, minBoard) {
   closePose(true); if (sel.length) setSel([]); if (fp) exitFP(); if (spinning) toggleSpin(false); settle();
   const boardBefore = board;
   if (spot.board !== board) { const ratio = spot.board / board; board = spot.board; buildBoard(board); camera.position.sub(controls.target).multiplyScalar(ratio).add(controls.target); }
+  if (spot.shift) shiftAll(spot.shift[0], spot.shift[1]);
   list.forEach(b => { b.x += spot.dx; b.z += spot.dz; addBrick(b, false); });
-  history.push({op: 'place', list: list.slice(), boardBefore});
+  history.push({op: 'place', list: list.slice(), boardBefore, shift: spot.shift});
   changed();
   return {grew: board !== boardBefore};
 }
@@ -6966,7 +7008,7 @@ let devOn = false;
 function basePose(b) { const t = TYPES[b.t]; b.mesh.position.set(b.x + b.w / 2, b.y * PH + (t.pivotY || 0), b.z + b.d / 2); b.mesh.rotation.set(0, -b.r * Math.PI / 2, 0); }
 function liftStops(b) {
   const base = b.y + b.h, stops = [base];
-  let ceil = 240;
+  let ceil = MAXH;
   for (let i = b.x; i < b.x + b.w; i++) for (let j = b.z; j < b.z + b.d; j++) { const L = colIdx.get(CK(i, j)); if (L) for (const o of L) if (o !== b && o.y >= base && !isFig(o) && !isAnimal(o)) ceil = Math.min(ceil, o.y); }
   const maxTop = ceil - 12, cand = new Set();
   for (let i = b.x - 1; i <= b.x + b.w; i++) for (let j = b.z - 1; j <= b.z + b.d; j++) {
@@ -7615,6 +7657,7 @@ function frame(now) {
   rebuildBatches();
   if (bp) { const o = 0.32 + 0.16 * Math.sin(now / 260); for (const k in bpMats) bpMats[k].opacity = o; }
   if (spinning || drops.length || debris.length || devOn || (fp && (fp.walk || fp.car))) shadowDirty = true;
+  if (board > 192) { const c = fp ? camera.position : controls.target; if (!shC || Math.hypot(c.x - shC[0], c.z - shC[1]) > 20) aimShadow(Math.round(c.x / 8) * 8, Math.round(c.z / 8) * 8); }
   if (shadowDirty) {   // 그림자만 새로 그리기: 모든 구역을 단순한 모양으로, 화면은 1픽셀만
     shadowDirty = false;
     chunkVis(true);
