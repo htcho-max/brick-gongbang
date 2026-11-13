@@ -641,24 +641,50 @@ function coasterLoop(E, F, Lv, R, S, n = 16, rec) {
   const X = [E[0] + Lv[0] * S, E[1], E[2] + Lv[1] * S]; out.push(X, [X[0] + F[0] * 7, X[1], X[2] + F[1] * 7]);
   return out;
 }
+// 헬릭스: 가운데 C, 반지름 R, 시작 각 a0에서 반시계로 turns 바퀴, 높이 y0 → y1
+function coasterHelix(C, R, a0, turns, y0, y1, n = 16) {
+  const out = [], K = Math.round(n * turns);
+  for (let k = 0; k <= K; k++) { const a = a0 + k / n * Math.PI * 2; out.push([C[0] + R * Math.cos(a), y0 + (y1 - y0) * k / K, C[1] + R * Math.sin(a)]); }
+  return out;
+}
+// 코르크스크루: A(선로 바닥)에서 F 방향으로 len만큼 가며 반지름 R로 축을 한 바퀴 감아 돎 (dir = 1 왼쪽, -1 오른쪽). rec에 [시작, 끝, 축 시작, F]
+function coasterScrew(A, F, R, len, n = 16, rec, dir = 1, ein = true, eout = true) {
+  const S = [F[1] * dir, -F[0] * dir], ax = [A[0], A[1] + R, A[2]], out = [];
+  for (let k = 0; k <= n; k++) {
+    const t = k / n, ph = -Math.PI / 2 + Math.PI * 2 * t, e = Math.min(1, ein ? t / 0.18 : 1, eout ? (1 - t) / 0.18 : 1), env = e * e * (3 - 2 * e);   // 들어가고 나올 때 반지름을 부드럽게
+    out.push([A[0] + F[0] * len * t + S[0] * Math.cos(ph) * R * env, A[1] + (R + Math.sin(ph) * R) * env, A[2] + F[1] * len * t + S[1] * Math.cos(ph) * R * env]);
+  }
+  if (rec) rec.push([out[0], out[n], ax, F]);
+  return out;
+}
 const COASTERS = {
   // 승강장 → 끌어올리기(29.5) → 낙하 → 360° 루프 → 언덕 → 돌아옴
   coaster: (() => { const loops = []; return {pts: [[1.5, 0.8, -12], [1.5, 0.8, 0], [1.5, 0.8, 10], [1.5, 3, 18], [1.5, 14, 28], [1.5, 26, 38], [4, 29, 44], [11, 29.5, 47], [18, 27, 44], [22, 18, 36], [25, 5, 24],
     ...coasterLoop([27, 3, 8], [0, -1], [1, 0], 6, 3.5, 16, loops), [30.5, 9, -12], [29, 10, -16], [26, 3, -24], [22, 6, -32], [14, 8, -37], [6, 5, -35], [2, 1.5, -26], [1.5, 0.8, -18]], lift: [1.5, 3, 18], N: 1000, tie: 3, every: 12, noSup: [], rolls: [], loops}; })(),
   // 384판 둘레: 서쪽 승강장에서 64까지 끌어올려 남서 모서리에서 거의 수직으로 떨어지고, 루프 셋(남·남동·동), 정문 위와 북쪽에서 몸이 한 바퀴 뒤집히는 회전, 언덕들
+  // 384판 둘레 (v49): 서쪽 승강장 → 70까지 끌어올려 거의 수직 낙하 → 조명 터널 1(남쪽, 낮게) → 큰 루프 → 낙타 언덕 → 정문 위 한 바퀴 회전 → 언덕 → 남동 오르는 헬릭스
+  // → 동쪽 코르크스크루 둘 → 조명 터널 2(동쪽, 굽은 길) → 북동 커브 → 북쪽 더블 루프 → 한 바퀴 회전 → 낙타 언덕 → 북서 헬릭스 → 서쪽 S자 커브 → 조명 터널 3(브레이크) → 승강장
   megacoaster: (() => {
-    const loops = [];
-    const M = [[42.5, 0.8, 162], [42.5, 0.8, 150], [42.5, 0.8, 140], [42.5, 3.5, 128], [42.5, 30, 98], [42.5, 58, 68], [44, 63, 58], [50, 64, 51], [58, 62, 46],
-      [68, 38, 40], [76, 10, 34], [84, 3.2, 31], ...coasterLoop([96, 3, 30], [1, 0], [0, 1], 11, 4, 16, loops),
-      [118, 18, 34], [130, 22, 34], [142, 8, 34], [156, 11, 34], [172, 12, 34], [188, 12, 34], [204, 12, 34], [218, 15, 34], [232, 28, 34], [248, 8, 36],
-      ...coasterLoop([262, 3, 36], [1, 0], [0, 1], 10, 4, 16, loops), [290, 10, 42], [314, 16, 52], [330, 12, 76],
-      [336, 4, 104], [336, 22, 132], [336, 24, 144], [336, 6, 164], ...coasterLoop([336, 3, 180], [0, 1], [-1, 0], 9, 4, 16, loops),
-      [332, 14, 214], [334, 28, 240], [330, 30, 262], [324, 22, 296], [312, 18, 326], [285, 12, 344], [262, 10, 347], [244, 12, 348], [229, 12, 348], [214, 12, 348],
-      [190, 6, 348], [150, 18, 346], [120, 26, 346], [95, 8, 346], [66, 12, 338], [49, 16, 315], [44, 6, 290], [44, 18, 262], [44, 6, 236], [44, 10, 210], [44, 4, 190], [43, 1.8, 178], [42.5, 0.8, 170]];
+    const loops = [], screws = [];
+    const M = [[42.5, 0.8, 162], [42.5, 0.8, 150], [42.5, 0.8, 140], [42.5, 3.5, 128], [42.5, 34, 96], [42.5, 64, 64], [43.5, 70, 54], [48, 70.5, 47], [55, 66, 42],
+      [62, 44, 36], [68, 16, 28], [74, 4, 23], [84, 2.6, 21], [97, 2.6, 19], [110, 2.6, 23], [120, 3, 22],
+      ...coasterLoop([132, 3, 22], [1, 0], [0, 1], 13, 4, 18, loops),
+      [150, 17, 26], [157, 19, 26], [164, 11, 26], [172, 13, 26], [188, 13, 26], [204, 13, 26], [214, 20, 26], [225, 23, 26], [237, 8, 26], [249, 19, 26], [260, 7, 27], [272, 6, 28], [284, 6, 28],
+      ...coasterHelix([300, 42], 14, -Math.PI / 2, 1.25, 6, 28, 16),
+      [324, 24, 60], [336, 14, 74], [340, 6, 84],
+      ...coasterScrew([340, 6, 90], [0, 1], 4.5, 26, 18, screws, 1, true, false), ...coasterScrew([340, 6, 116], [0, 1], 4.5, 26, 18, screws, 1, false, true).slice(1),
+      [340, 6, 152], [340, 17, 164], [340, 19, 173], [340, 6, 187], [339, 3, 198], [334, 3, 214], [333, 3, 228], [339, 3, 244], [340, 3, 256],
+      [340, 10, 272], [336, 18, 292], [326, 20, 316], [306, 16, 338], [280, 6, 348],
+      ...coasterLoop([266, 3, 348], [-1, 0], [0, 1], 10, 4, 16, loops), ...coasterLoop([242, 3, 352], [-1, 0], [0, -1], 10, 4, 16, loops),
+      [226, 12, 348], [214, 13, 348], [200, 13, 348], [186, 13, 348], [172, 20, 348], [162, 22, 348], [150, 8, 348], [138, 18, 348], [128, 19, 348], [116, 7, 348], [104, 6, 348],
+      ...coasterHelix([80, 336], 12, Math.PI / 2, 1.25, 6, 20, 16),
+      [56, 10, 318], [49, 14, 302], [56, 10, 286], [48, 8, 270], [56, 12, 254], [50, 6, 238], [44, 3, 226], [44, 2.5, 206], [44, 2, 190], [43, 1.6, 178], [42.5, 0.8, 170]];
     const L = (x, z) => [-(x - MEGA.SX), -(z - MEGA.SZ)], loc = ([x, y, z]) => { const l = L(x, z); return [l[0], y, l[1]]; };
     const rect = (x0, x1, z0, z1) => { const a = L(x0, z0), b = L(x1, z1); return [Math.min(a[0], b[0]), Math.max(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[1], b[1])]; };
-    return {pts: M.map(loc), lift: [1.5, 3.5, 22], N: 2400, tie: 3, every: 24, noSup: [rect(168, 208, 20, 50)],   // 정문 길 위에는 기둥 없음
-      rolls: [[loc([172, 12, 34]), loc([204, 12, 34])], [loc([244, 12, 348]), loc([214, 12, 348])]], loops: loops.map(([a, b]) => [loc(a), loc(b)])};   // 몸이 한 바퀴 뒤집히는 회전 구간 (시작·끝)
+    return {pts: M.map(loc), lift: [1.5, 3.5, 22], N: 3200, tie: 3, every: 24, noSup: [rect(168, 208, 18, 50)],   // 정문 길 위에는 기둥 없음
+      rolls: [[loc([172, 13, 26]), loc([204, 13, 26])], [loc([214, 13, 348]), loc([186, 13, 348])]],
+      loops: loops.map(([a, b]) => [loc(a), loc(b)]), screws: screws.map(([a, b, ax, f]) => [loc(a), loc(b), loc(ax), [-f[0], -f[1]]]),
+      tunnels: [[loc([78, 3, 22]), loc([121, 3, 22])], [loc([339, 3, 196]), loc([340, 3, 258])], [loc([44, 3, 228]), loc([44, 2, 186])]]};   // 조명 터널 (시작·끝)
   })()
 };
 def('animal','fish',1,2,2,'물고기',{multi:true}); def('animal','pig',2,2,4,'돼지',{multi:true}); def('animal','cow',2,4,9,'소',{multi:true});
@@ -1415,6 +1441,26 @@ function multiGeo(t, c, pose) {
           if (C.sup(i, p)) { cyl(0.18, 0.22, p.y - 0.5, p.x, 0, p.z, WHT, 8); bx(0.8, 0.2, 0.8, p.x, 0, p.z, DARK); }
         }
         for (const L of rl) add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(L, true), N, 0.13, 6, true), sel);
+        // 터널: 둥근 지붕 단면을 선로를 따라 쓸어 만든 껍데기(안쪽 진회색, 바깥 돌색, 입구 테는 빨강) + 천장 등·벽 등
+        for (const [i0, i1] of C.tunnels) {
+          const prof = (r, w) => { const a = [[-w, -0.8], [-w, 2.6]]; for (let k = 1; k < 8; k++) { const t = Math.PI - k / 8 * Math.PI; a.push([Math.cos(t) * r, 2.6 + Math.sin(t) * r]); } a.push([w, 2.6], [w, -0.8]); return a; };
+          const IN = prof(2.6, 2.6), OUT = prof(3.2, 3.2), len = (i1 - i0 + N) % N;
+          const ring = (k, pr) => { const i = (i0 + k) % N, p = C.P[i], nn = C.NN[i], b = new THREE.Vector3().crossVectors(nn, C.T[i]); return pr.map(([x, y]) => p.clone().addScaledVector(b, x).addScaledVector(nn, y)); };
+          const sweep = (pr, inward) => {
+            const pos = [], idx = [], R0 = [];
+            for (let k = 0; k <= len; k++) { const rg = ring(k, pr); R0.push(rg); for (const v of rg) pos.push(v.x, v.y, v.z); }
+            const m = pr.length;
+            for (let k = 0; k < len; k++) for (let j = 0; j < m - 1; j++) { const a = k * m + j, b = a + 1, c = a + m, d = c + 1; idx.push(a, c, b, b, c, d); }
+            // 방향 맞추기: 첫 사각형의 면 방향이 선로 가운데 쪽(안쪽) 또는 바깥쪽을 보도록
+            const A = R0[0][1], B = R0[0][2], Cc = R0[1][1], nrm = new THREE.Vector3().subVectors(Cc, A).cross(new THREE.Vector3().subVectors(B, A));
+            const ctr = C.P[i0].clone().addScaledVector(C.NN[i0], 2), toC = ctr.sub(A);
+            if ((nrm.dot(toC) > 0) !== inward) for (let q = 0; q < idx.length; q += 3) { const t = idx[q + 1]; idx[q + 1] = idx[q + 2]; idx[q + 2] = t; }
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3 * 2), 2)); g.setIndex(idx); g.computeVertexNormals(); return g;
+          };
+          add(sweep(IN, true), '#4a4f54'); add(sweep(OUT, false), '#8d8a7e');
+          for (const k of [0, len]) { const a = ring(k, IN), o = ring(k, OUT), pos = [], idx = []; a.forEach((v, j) => pos.push(v.x, v.y, v.z, o[j].x, o[j].y, o[j].z)); for (let j = 0; j < a.length - 1; j++) { const q = j * 2; idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2, q, q + 2, q + 1, q + 1, q + 2, q + 3); } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3 * 2), 2)); g.setIndex(idx); g.computeVertexNormals(); add(g, '#c91a09'); }
+          for (const L of tunnelLamps(C, i0, len)) { const g = new THREE.BoxGeometry(...L.size); g.applyMatrix4(L.m); add(g, '#fff4c4'); const h = new THREE.BoxGeometry(L.size[0] + 0.12, 0.08, L.size[2] + 0.12); h.applyMatrix4(L.mBack); add(h, '#2a2a2a'); }
+        }
         add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp, true), N, 0.2, 6, true), STONE);
         // 승강장: 나무 바닥(윗면 1.2) + 한 단 계단 + 지붕
         bx(3, 1.2, 24, -1.5, 0, 0, '#8a5a32'); bx(1, 0.6, 24, -3.5, 0, 0, '#8a5a32');
@@ -5669,7 +5715,7 @@ const MODELS = [
     for (let z = 20; z <= 176; z += 12) { A('nature:소나무', 2, 1, z, 0, (z / 12) % 4 ? 3 : 10); A('nature:소나무', 178, 1, z, 0, (z / 12) % 3 ? 3 : 6); }
     for (const x of [6, 40, 140, 170]) A('nature:소나무', x, 1, 7, 0, 3);
   }},
-  {id: 'fpark384', fig: true, name: '브릭 놀이동산 384', lv: '도전', board: 384, desc: '384×384 판 전체를 쓰는 큰 놀이동산. 판 둘레를 한 바퀴 도는 대형 롤러코스터(약 1.3km, 끌어올린 뒤 54칸 높이에서 떨어져 남쪽 정문 위를 지나 동·북·서쪽 언덕을 넘어요)를 1인칭으로 탈 수 있어요. 가운데에는 브릭 놀이동산(대관람차·롤러코스터·성·푸드코트·농장)이 통째로 들어 있고, 둘레에는 입구 광장과 큰 정문, 브릭 호텔, 동쪽 호수, 북쪽 캠핑 숲, 산책로가 있어요. 대형 롤러코스터는 서쪽 승강장에서 타요.', build(A) {
+  {id: 'fpark384', fig: true, name: '브릭 놀이동산 384', lv: '도전', board: 384, desc: '384×384 판 전체를 쓰는 큰 놀이동산. 판 둘레를 한 바퀴 도는 대형 롤러코스터(약 1.7km)를 1인칭으로 탈 수 있어요: 70 높이에서 거의 수직으로 떨어져 가로등이 켜진 터널로 들어가고, 큰 루프, 낙타 언덕, 정문 위 한 바퀴 회전, 오르는 헬릭스, 코르크스크루 둘, 굽은 조명 터널, 더블 루프, 또 한 번의 회전, 북서 헬릭스, S자 커브, 마지막 터널을 지나 돌아와요. 가운데에는 브릭 놀이동산(대관람차·롤러코스터·성·푸드코트·농장)이 통째로 들어 있고, 둘레에는 입구 광장과 큰 정문, 브릭 호텔, 동쪽 호수, 북쪽 캠핑 숲, 산책로가 있어요. 대형 롤러코스터는 서쪽 승강장에서 타요.', build(A) {
     const put = (list, y = 0) => list.forEach(o => A(TYPES[o.t].key, o.x, y || o.y, o.z, o.r, o.c));
     const W = 376, D = 376, IN = 96, GR = 3, PATH = 9;
     const inner = (x, z) => x >= IN && x < IN + 184 && z >= IN && z < IN + 184;   // 가운데 놀이동산 자리 (자기 바닥이 있음)
@@ -7556,6 +7602,28 @@ function setWeather(w) {
   toast({rain: '🌧 비가 와요', snow: '❄ 눈이 와요 · 지붕에 하얗게 쌓여요', clear: was === 'rain' ? '☀ 비가 그쳤어요 · 무지개가 떴어요' : '☀ 맑아요', rainbow: '🌈 무지개가 떴어요'}[w]);
 }
 
+// ---- 터널 등 (v49): 천장 등은 4칸마다, 벽 등(가로등 모양 랜턴)은 8칸마다 양쪽. 모양은 선로 지오메트리에, 빛(밝은 면 + 빛무리)은 따로 붙임
+function tunnelLamps(C, i0, len) {
+  const out = [], ds = C.L / C.N, step = Math.max(1, Math.round(4 / ds)), M = (p, b, nn, t) => new THREE.Matrix4().makeBasis(b, nn, t).setPosition(p.x, p.y, p.z);
+  for (let k = 2; k < len - 1; k += step) {
+    const i = (i0 + k) % C.N, p = C.P[i], nn = C.NN[i], t = C.T[i], b = new THREE.Vector3().crossVectors(nn, t);
+    const top = p.clone().addScaledVector(nn, 5.05);
+    out.push({size: [0.9, 0.12, 0.5], m: M(top, b, nn, t), mBack: M(top.clone().addScaledVector(nn, 0.1), b, nn, t), at: top, glow: 2.4});
+    if ((k / step) % 2 < 1) for (const sd of [-1, 1]) { const w = p.clone().addScaledVector(b, sd * 2.45).addScaledVector(nn, 2.3); out.push({size: [0.22, 0.45, 0.3], m: M(w, b, nn, t), mBack: M(w.clone().addScaledVector(nn, 0.28), b, nn, t), at: w, glow: 1.6}); }
+  }
+  return out;
+}
+let lampMat = null;
+function coasterDecor(b) {
+  const C = coasterCurve(TYPES[b.t].kind); if (!C.tunnels.length) return null;
+  if (!lampMat) lampMat = [new THREE.MeshBasicMaterial({color: '#fff2c0'}), new THREE.SpriteMaterial({map: haloTex, color: '#ffd98a', transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending})];
+  const g = new THREE.Group(), box = new THREE.BoxGeometry(1, 1, 1);
+  for (const [i0, i1] of C.tunnels) for (const L of tunnelLamps(C, i0, (i1 - i0 + C.N) % C.N)) {
+    const m = new THREE.Mesh(box, lampMat[0]); m.applyMatrix4(L.m); m.scale.set(L.size[0] + 0.02, L.size[1] + 0.02, L.size[2] + 0.02); g.add(m);
+    const h = new THREE.Sprite(lampMat[1]); h.position.copy(L.at); h.scale.setScalar(L.glow); g.add(h);
+  }
+  return g;
+}
 // ---- 대관람차·롤러코스터 (v42): 1인칭으로 타기
 var EXTRA = [];   // 걷는 피규어가 부딪히는 움직이는 상자(곤돌라·기둥·승강장), [x0,x1,y0,y1,z0,z1] 세계 좌표
 const BIG = new Set(['bigferris', 'coaster', 'megacoaster']);
@@ -7644,6 +7712,8 @@ function bigStep(d, dt) {
       if (back && ahead < Math.max(0.05, d.v * dt)) { d.u = C.us; d.v = 0; d.wait = 7; if (d.rider) rideOff(); }
       else d.u = (d.u + d.v * dt / L) % 1;
       if (d.rider && d.v > 18) earn('coaster');
+      if (d.rider && d.u >= C.uLift && d.u <= C.uTop) { d.clk = (d.clk || 0) - dt; if (d.clk <= 0) { d.clk = 0.2; tone(1700, 0.025, 'square', 0.025); } }   // 끌어올리는 체인 소리
+      if (d.rider && C.inTunnel(d.u) && d.v > 6 && Math.random() < dt * 10) noise(0.25, 0.03 + d.v * 0.003, 250 + d.v * 12);   // 터널 울림
       if (d.rider && d.v > 12 && Math.random() < dt * 6) noise(0.3, 0.015 + d.v * 0.0022, 400 + d.v * 25);   // 바람 소리
     }
     d.cars.forEach((m, i) => carPose(C, (d.u - i * C.gap / L + 1) % 1, m));
@@ -7691,12 +7761,17 @@ function coasterCurve(kind = 'coaster') {
   for (let i = 0; i < N; i++) { P.push(curve.getPointAt(i / N)); T.push(curve.getTangentAt(i / N)); }
   const loopR = (D.loops || []).map(([a, b]) => [Math.round(near(new V(...a)) * N) - 2, Math.round(near(new V(...b)) * N) + 2]);
   const inLoop = i => loopR.some(([a, b]) => (i - a + N) % N <= (b - a + N) % N);
+  const inR = (i, [a, b]) => (i - a + N) % N <= (b - a + N) % N;
+  const scr = (D.screws || []).map(([a, b, ax, f]) => ({r: [Math.round(near(new V(...a)) * N), Math.round(near(new V(...b)) * N)], ax: new V(...ax), f: new V(f[0], 0, f[1]).normalize()}));
+  const inScrew = i => scr.find(q => inR(i, q.r));
   const upright = t => { const v = new V(0, 1, 0).addScaledVector(t, -t.y); return v.lengthSq() > 1e-6 ? v.normalize() : null; };
   let n = upright(T[0]);
   let ease = 0, easeK = 0; const EK = 30;   // 루프를 나온 뒤 30샘플에 걸쳐 똑바로 돌아옴
   for (let i = 0; i < N; i++) {
     const carried = i ? n.clone().addScaledVector(T[i], -n.dot(T[i])).normalize() : null;
     if (i && inLoop(i) && inLoop(i - 1)) { n = carried; Nn.push(n); continue; }
+    const sc = inScrew(i);
+    if (sc) { const rel = P[i].clone().sub(sc.ax), ap = sc.ax.clone().addScaledVector(sc.f, rel.dot(sc.f)); n = ap.sub(P[i]); n.addScaledVector(T[i], -n.dot(T[i])).normalize(); Nn.push(n); continue; }   // 코르크스크루: 위쪽 = 축 쪽
     const u = upright(T[i]) || carried;
     if (i && inLoop(i - 1)) { const B = new V().crossVectors(u, T[i]); ease = Math.atan2(carried.dot(B), carried.dot(u)); easeK = EK; }
     if (easeK > 0) { const a = ease * (easeK / EK), B = new V().crossVectors(u, T[i]); n = u.clone().multiplyScalar(Math.cos(a)).addScaledVector(B, Math.sin(a)).normalize(); easeK--; } else n = u;
@@ -7706,7 +7781,7 @@ function coasterCurve(kind = 'coaster') {
   for (let i = 0; i < N; i++) {
     let ok = true; for (const k of [-2, 0, 2]) if (Math.abs(T[(i + k + N) % N].y) > 0.5) ok = false;
     let dh = head(i + 2) - head(i - 2); dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-    bank0.push(ok && !inLoop(i) ? Math.max(-1.0, Math.min(1.0, dh / (4 * ds) * 20)) : 0);
+    bank0.push(ok && !inLoop(i) && !inScrew(i) ? Math.max(-1.0, Math.min(1.0, dh / (4 * ds) * 20)) : 0);
   }
   const W = Math.round(12 / ds), roll = new Float32Array(N);
   for (let i = 0; i < N; i++) { let a = 0; for (let k = -W; k <= W; k++) a += bank0[(i + k + N) % N]; roll[i] = a / (2 * W + 1); }
@@ -7722,7 +7797,9 @@ function coasterCurve(kind = 'coaster') {
     oN.addScaledVector(oT, -oN.dot(oT)).normalize(); oB.crossVectors(oN, oT); return oT;
   };
   const sup = (i, p) => i % D.every === 0 && p.y > 1.6 && NN[i].y > 0.3 && !D.noSup.some(r => p.x > r[0] && p.x < r[1] && p.z > r[2] && p.z < r[3]);
-  return CC[kind] = {curve, L, us: near(new V(1.5, 0.8, 0), 0, 0.3), uLift: near(new V(...D.lift), 0, 0.4), uTop, hTop, gap: 4.6, N, tie: D.tie, sup, P, T, NN, frame};
+  const tunnels = (D.tunnels || []).map(([a, b]) => [Math.round(near(new V(...a)) * N), Math.round(near(new V(...b)) * N)]);
+  const inTunnel = u => { const i = Math.round((((u % 1) + 1) % 1) * N) % N; return tunnels.some(r => inR(i, r)); };
+  return CC[kind] = {curve, L, us: near(new V(1.5, 0.8, 0), 0, 0.3), uLift: near(new V(...D.lift), 0, 0.4), uTop, hTop, gap: 4.6, N, tie: D.tie, sup, P, T, NN, frame, tunnels, inTunnel};
 }
 
 // ---- 매 프레임
@@ -7737,7 +7814,7 @@ function playFrame(dt, now) {
   if (debris.length) debrisStep(dt);
   if (balls.length) ballStep(dt);
   if (rockets.length || fws.length) fireworkStep(dt);
-  if (PLAY.dirty) { PLAY.dirty = false; snowDirty = true; ambientSync(); for (const b of bricks) if (BIG.has(TYPES[b.t].kind)) setDyn(b, 'big', true); if (devOn) devSync(); PLAY.missionT = Math.min(PLAY.missionT, 0.8); }
+  if (PLAY.dirty) { PLAY.dirty = false; snowDirty = true; ambientSync(); for (const b of bricks) if (BIG.has(TYPES[b.t].kind)) { setDyn(b, 'big', true); if (b.mesh && !b.mesh.userData.decor && TYPES[b.t].kind !== 'bigferris') { const g = coasterDecor(b); b.mesh.userData.decor = g || true; if (g) b.mesh.add(g); } } if (devOn) devSync(); PLAY.missionT = Math.min(PLAY.missionT, 0.8); }
   const want = spinning || !!fp;
   if (want && !devOn) { devOn = true; devSync(); } else if (!want && devOn) { devOn = false; for (const d of [...devs.values()]) devRemove(d); EXTRA.length = 0; }
   if (devOn) devStep(dt);
