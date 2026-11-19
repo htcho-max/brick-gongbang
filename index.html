@@ -3898,22 +3898,22 @@ function figBoxes(o, sub = 1) {
 function figFoot(w, P, th) { const [cx, cz, hx, hz] = boxPose(w.comp[0], w, P, th); return [cx, cz, hx * 0.8, hz * 0.8]; }
 // 그 자세에서 몸이 부딪히는 가장 높은 윗면 (-1: 안 부딪힘, Infinity: 판 밖)
 function figHit(w, P, th, feet) {
-  const [cx, cz, hx, hz] = figFoot(w, P, th), half = board / 2, me = w.comp[0];
+  const [cx, cz, hx, hz] = figFoot(w, P, th), half = board / 2, me = w.comp[0], own = w.cav ? w.set : null, FH = w.hgt || FIG_H;
   if (cx - hx < -half || cx + hx > half || cz - hz < -half || cz + hz > half) return Infinity;
   let top = -1;
   for (const o of bricksNear(cx - hx, cz - hz, cx + hx, cz + hz)) {
-    if (o === me) continue;
-    for (const B of figBoxes(o)) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FIG_H - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
+    if (o === me || (own && own.has(o))) continue;
+    for (const B of figBoxes(o)) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FH - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
   }
-  for (const B of EXTRA) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FIG_H - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
+  for (const B of EXTRA) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[2] < feet + FH - 1e-3 && B[3] > feet + 1e-3) top = Math.max(top, B[3]);
   return top;
 }
 // 발밑 바닥 높이 (발보다 낮거나 같은 윗면 중 가장 높은 것)
 function figGround(w, P, th, feet) {
-  const [cx, cz, hx, hz] = figFoot(w, P, th), me = w.comp[0];
+  const [cx, cz, hx, hz] = figFoot(w, P, th), me = w.comp[0], own = w.cav ? w.set : null;
   let g = 0;
   for (const o of bricksNear(cx - hx, cz - hz, cx + hx, cz + hz)) {
-    if (o === me) continue;
+    if (o === me || (own && own.has(o))) continue;
     for (const B of figBoxes(o)) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[3] <= feet + 0.02) g = Math.max(g, B[3]);
   }
   for (const B of EXTRA) if (B[0] < cx + hx && B[1] > cx - hx && B[4] < cz + hz && B[5] > cz - hz && B[3] <= feet + 0.02) g = Math.max(g, B[3]);
@@ -6530,9 +6530,21 @@ const SWING = new Set(['sword', 'katana', 'axe', 'spear']);
 const snap15 = a => Math.max(-60, Math.min(180, Math.round(a / 15) * 15));
 function startWorld() {
   npcs = []; gunners = [];
+  // 기병: 무기를 들고 안장에 앉은 피규어가 탄 말은 함께 달림
+  const riders = new Set();
+  for (const h of bricks) {
+    if (TYPES[h.t].kind !== 'horse' || cutHidden(h) || h.sn || vehMap.has(h)) continue;
+    const rb = bricksNear(h.x, h.z, h.x + h.w, h.z + h.d, false).find(o => TYPES[o.t].kind === 'minifig' && !o.sn && o.y === h.y + TYPES[h.t].h && overlapXZ(o, h.x, h.z, h.w, h.d) && !(fp && fp.b === o));
+    if (!rb) continue;
+    const p = figPose(TYPES[rb.t], rb.pose);
+    if (p.legs !== 'sit' || !(SWING.has(p.ri) || SWING.has(p.li))) continue;
+    const n = {b: rb, p, moving: true, cav: h, act: 'swing', ph: Math.random() * 10, key: '', comp: [h, rb], set: new Set([h, rb]), wheels: [], axles: [], O: [h.x + h.w / 2, h.z + h.d / 2], P: [0, 0], th: 0, d0: rollDir(h), u: 0,
+      feet: h.y * PH, y0: h.y * PH, lift: 0, hgt: TYPES[h.t].h * PH + FIG_H, vy: 0, grounded: true, turnT: 2 + Math.random() * 3, fireT: 1, recoil: 0, npc: true};
+    npcs.push(n); riders.add(rb); vehMap.set(h, n); vehMap.set(rb, n);
+  }
   for (const b of bricks) {
     const t = TYPES[b.t];
-    if (cutHidden(b) || (fp && fp.b === b)) continue;
+    if (cutHidden(b) || (fp && fp.b === b) || riders.has(b)) continue;
     if (t.kind === 'cannon') { gunners.push({b, fireT: 1.5 + Math.random() * 4, big: true}); setDyn(b, 'anim', true); continue; }
     if (t.kind !== 'minifig' || b.sn) continue;
     const p = figPose(t, b.pose), moving = (p.legs === 'walk' || p.legs === 'run') && !vehMap.get(b);
@@ -6554,7 +6566,12 @@ function stopWorld() {
   for (const n of npcs) {
     const b = n.b;
     if (b.mesh) b.mesh.geometry = geoFor(TYPES[b.t], b.c, b.pose);
-    if (n.moving) {
+    if (n.cav) {
+      const dy = Math.round(n.feet / PH) - n.cav.y;
+      if (dy) for (const o of n.comp) { o._y0 = o.y; o.y += dy; }
+      n.lift = 0; n.b = n.cav;
+      if (n.cav._ix && vehMap.get(n.cav) === n) vehicles.push(n);
+    } else if (n.moving) {
       const ny = Math.max(0, Math.round(n.feet / PH));
       if (ny !== b.y) { b._y0 = b.y; b.y = ny; }
       if (b._ix && vehMap.get(b) === n) vehicles.push(n);
@@ -6566,7 +6583,7 @@ function stopWorld() {
 function npcPose(n, t) {
   if (n.down > 0) return Object.assign({}, n.p, {legs: 'fallen', l: 165, r: 150, ri: '', li: '', h: 0});
   const p = Object.assign({}, n.p);
-  if (n.moving) {
+  if (n.moving && !n.cav) {
     const ph = Math.floor(t * (p.legs === 'run' ? 7 : 4.5)) % 2;
     p.legs = ph ? p.legs + 'B' : p.legs;
     if (!p.ri && Math.abs(p.r) < 50) p.r = ph ? 30 : -30;
@@ -6582,7 +6599,7 @@ function npcPose(n, t) {
   return p;
 }
 function npcWalk(n, dt) {
-  const s = (n.p.legs === 'run' ? 2.6 : 1.3) * speedMul * dt, fw = rotXZ(n.d0[0], n.d0[1], n.th);
+  const s = (n.cav ? 4.2 : n.p.legs === 'run' ? 2.6 : 1.3) * speedMul * dt, fw = rotXZ(n.d0[0], n.d0[1], n.th);
   const P2 = [n.P[0] + fw[0] * s, n.P[1] + fw[1] * s];
   let ok = false, hit = figHit(n, P2, n.th, n.feet);
   if (hit === -1) ok = true;
@@ -6590,7 +6607,7 @@ function npcWalk(n, dt) {
   if (ok && n.feet - figGround(n, P2, n.th, n.feet) > 1.3) ok = false;   // 낭떠러지 앞에서는 돌아섬
   n.turnT -= dt;
   // 전투: 칼을 든 병사는 가장 가까운 적에게 달려가 맞붙음
-  const G = n.goal, F = G && figFoot(n, n.P, n.th), gd = G ? Math.hypot(G.x - F[0], G.z - F[1]) : 0, hold = G && gd < 2.4;
+  const G = n.goal, F = G && figFoot(n, n.P, n.th), gd = G ? Math.hypot(G.x - F[0], G.z - F[1]) : 0, hold = G && gd < (n.cav ? 3.2 : 2.4);
   if (ok && n.turnT > 0 && !hold) n.P = P2;
   else if (!hold || n.turnT <= 0) {
     n.turnT = G ? 0.7 + Math.random() * 0.7 : 3 + Math.random() * 6;
@@ -6601,6 +6618,7 @@ function npcWalk(n, dt) {
   const g = figGround(n, n.P, n.th, n.feet);
   if (n.feet > g + 1e-3) { n.vy -= 22 * dt; n.feet = Math.max(g, n.feet + n.vy * dt); n.grounded = n.feet <= g + 1e-3; }
   else { n.feet = g; n.vy = 0; n.grounded = true; }
+  if (n.cav) { n.lift = n.feet - n.y0 + (n.grounded ? Math.abs(Math.sin(performance.now() / 1000 * 9 + n.ph)) * 0.22 : 0); placeVehicleMeshes(n); return; }   // 말발굽 따라 들썩
   placeVehicleMeshes(n);
   n.b.mesh.position.y = n.feet;
 }
@@ -6611,7 +6629,7 @@ function worldStep(dt) {
     if (!b._ix || !b.mesh) { npcs.splice(i, 1); continue; }
     if (fp && fp.b === b) continue;
     if (n.down > 0) { n.down -= dt * speedMul; if (n.down <= 0) { n.down = 0; if (PLAY.talk && Math.random() < 0.25) bubble(b, ['다시 간다!', '아직 멀쩡해!', '으라차!'][Math.floor(Math.random() * 3)], 1.8); } }
-    if (n.moving && !(n.down > 0)) { if (vehMap.get(b) !== n) vehMap.set(b, n); npcWalk(n, dt); }
+    if (n.moving && !(n.down > 0)) { if (vehMap.get(b) !== n) vehMap.set(b, n); if (n.cav && vehMap.get(n.cav) !== n) vehMap.set(n.cav, n); npcWalk(n, dt); }
     if (n.recoil > 0) n.recoil -= dt;
     const p = npcPose(n, t + n.ph), key = poseKey(p);
     if (key !== n.key) { n.key = key; b.mesh.geometry = geoFor(TYPES[b.t], b.c, p); }
@@ -8036,10 +8054,11 @@ function battleStep(dt) {
       if (u.kind !== 'swing') continue;
       u.foe = null; u.goal = null;
       if (u.down > 0 || !u.b.mesh) continue;
-      const p = uChest(u, new THREE.Vector3()); let best = null, bd = u.moving ? 70 : 3.4;
-      for (const e of BAT.units) if (e.team !== u.team && isTarget(e)) { const d = Math.hypot(uChest(e, _bw).x - p.x, _bw.z - p.z); if (d < bd && Math.abs(_bw.y - p.y) < 3) { bd = d; best = e; } }
+      const p = uChest(u, new THREE.Vector3()), reach = u.cav ? 4.2 : 3.4; let best = null, bd = u.moving ? 70 : reach;
+      if (u.cav) p.y -= TYPES[u.cav.t].h * PH;
+      for (const e of BAT.units) if (e.team !== u.team && isTarget(e)) { const d = Math.hypot(uChest(e, _bw).x - p.x, _bw.z - p.z), ey = _bw.y - (e.cav ? TYPES[e.cav.t].h * PH : 0); if (d < bd && Math.abs(ey - p.y) < 3) { bd = d; best = e; } }
       if (!best) continue;
-      if (bd < 3.4) u.foe = best;
+      if (bd < reach) u.foe = best;
       if (u.moving) u.goal = uChest(best, new THREE.Vector3());
     }
   }
