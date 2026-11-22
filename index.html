@@ -143,6 +143,15 @@ body.fp.playing .toast{top:calc(env(safe-area-inset-top,0px) + 150px)}
 .bub{position:absolute;transform:translate(-50%,-100%);background:#fff;color:#1d2733;border-radius:12px;padding:4px 10px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.18);border:1.5px solid #1d2733;margin-top:-8px}
 .bub::after{content:'';position:absolute;left:50%;bottom:-6px;width:9px;height:9px;background:#fff;border-right:1.5px solid #1d2733;border-bottom:1.5px solid #1d2733;transform:translateX(-50%) rotate(45deg)}
 body.riding .drivepad{display:none!important}
+/* 운전·경주: 왼손 = 가속·브레이크(왼쪽 아래), 오른손 = 좌우(오른쪽 아래) */
+body.padsplit .drivepad{left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));justify-content:flex-end;align-items:flex-end;gap:14px;pointer-events:none}
+body.padsplit .drivepad button,body.padsplit .drivepad .col{pointer-events:auto}
+body.padsplit .drivepad .col{order:-1;margin-right:auto;gap:12px}
+body.padsplit .drivepad button{width:76px;height:76px;font-size:26px}
+body.padsplit .drivepad .col button:first-child{width:84px;height:84px;background:#2f9e44;color:#fff;border-color:#2f9e44}
+body.padsplit .drivepad .col button:last-child{background:#d9480f;color:#fff;border-color:#d9480f}
+body.padsplit .drivepad .col button.on{filter:brightness(.8)}
+body.padsplit .drivepad .jump{display:none!important}
 .sheet[hidden]{display:none}
 .sheet{position:fixed;inset:0;z-index:40;background:rgba(29,39,51,.35);display:flex;align-items:center;justify-content:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 16px) calc(env(safe-area-inset-bottom,0px) + 16px)}
 .sheet-card{background:#fff;border-radius:18px;width:min(560px,100%);max-height:100%;display:flex;flex-direction:column;gap:12px;padding:18px;box-shadow:0 18px 50px rgba(29,39,51,.3);min-width:0}
@@ -3491,6 +3500,7 @@ function updatePad() {
   pad.hidden = !show;
   const fly = spinning && vehicles.some(v => v.fly && v.steer);
   document.body.classList.toggle('fpfly', fly);
+  document.body.classList.toggle('padsplit', show && !fly && (!!(RACE && RACE.on) || !!(fp && fp.car)));   // 운전·경주는 가속·브레이크(왼쪽)와 핸들(오른쪽)을 나눔
   if (!(fp && fp.walk)) pad.querySelector('.jump').textContent = fly ? '상승' : '점프';
   const bot = fp || (RACE && RACE.on) ? 'calc(env(safe-area-inset-bottom, 0px) + 24px)' : (document.querySelector('.tray-inner').offsetHeight + 24) + 'px';
   if (show) pad.style.bottom = bot;
@@ -8263,12 +8273,14 @@ function raceUI() {
 #rhRes button{background:#1b2a34;color:#fff}
 #rhRes button.ghost{background:#e9ecef;color:#1b2a34}
 body.racing header.top,body.racing .tray,body.racing #hud{display:none!important}
-@media (max-width:640px){#raceHud .rh-top span{padding:4px 8px;font-size:13px}#rhList{font-size:12px;top:calc(env(safe-area-inset-top,0px) + 92px)}#rhSpd{font-size:26px;bottom:calc(env(safe-area-inset-bottom,0px) + 150px)}}`;
+@media (max-height:520px){#rhList{display:none}}
+@media (max-width:640px){#raceHud .rh-btns span{display:none}#raceHud .rh-top{top:calc(env(safe-area-inset-top,0px) + 60px);width:calc(100% - 24px)}#rhList{top:calc(env(safe-area-inset-top,0px) + 140px)!important}}
+@media (max-width:640px),(max-height:520px){#raceHud .rh-top span{padding:4px 8px;font-size:13px}#rhList{font-size:12px;top:calc(env(safe-area-inset-top,0px) + 92px)}#rhSpd{font-size:26px;left:auto;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 120px)}}`;
   document.head.appendChild(st);
   const d = document.createElement('div'); d.id = 'raceHud'; d.hidden = true;
   d.innerHTML = `<div class="rh-top"><span id="rhLap"></span><span id="rhPos"></span><span id="rhTime"></span><span id="rhBest"></span></div>
 <div id="rhList"></div><div id="rhSpd"></div><div id="rhBig"></div>
-<div class="rh-btns"><button id="rhCam" type="button">🎥 시점 (C)</button><button id="rhExit" type="button">✕ 그만 (Esc)</button></div>
+<div class="rh-btns"><button id="rhCam" type="button">🎥<span> 시점 (C)</span></button><button id="rhExit" type="button">✕<span> 그만 (Esc)</span></button></div>
 <div id="rhRes" hidden></div>`;
   document.body.appendChild(d);
   $('rhCam').addEventListener('click', raceCam); $('rhExit').addEventListener('click', raceStop);
