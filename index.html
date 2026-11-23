@@ -454,6 +454,7 @@ body.fp .bp{display:none!important}
         <button class="pbtn" data-act="hide" aria-pressed="false"><b>🙈 숨바꼭질</b><span>어딘가 숨은 사람을 찾아요</span></button>
         <button class="pbtn" data-act="race" aria-pressed="false"><b>🏁 경주</b><span>고리를 차례로 지나 결승까지</span></button>
         <button class="pbtn" data-act="gp" aria-pressed="false"><b>🏎 자동차 경주</b><span>경주 트랙에서 AI 차들과 3바퀴</span></button>
+        <button class="pbtn" data-act="surv" aria-pressed="false"><b>🔫 서바이벌</b><span>1인칭 페인트볼 팀전</span></button>
         <button class="pbtn" data-act="fireworks"><b>🎆 불꽃놀이</b><span>하늘에 불꽃을 쏘아 올려요</span></button>
       </div>
       <h3>부수기 <span>무너진 블럭은 되돌리기(↶)로 다시 세워요</span></h3>
@@ -2903,6 +2904,7 @@ addEventListener('keydown', e => {
   if (!$('sheet').hidden) { if (e.key === 'Escape') closeSheet(); return; }
   if (!$('galSheet').hidden) { if (e.key === 'Escape') $('galSheet').hidden = true; return; }
   if (!$('playSheet').hidden) { if (e.key === 'Escape') $('playSheet').hidden = true; return; }
+  if (SURV && SURV.on) { const k = e.key.toLowerCase(); if (k === 'escape') { if (!document.pointerLockElement) survStop(); return; } if (k === 'r') { svReload(); return; } if (!['g', 'n'].includes(k)) return; }
   if (RACE && RACE.on) { const k = e.key.toLowerCase(); if (k === 'escape') raceStop(); else if (k === 'c') raceCam(); else if (k === 'n') $('btnNight').click(); return; }
   if (fp) {
     const k = e.key.toLowerCase();
@@ -2960,7 +2962,7 @@ addEventListener('keydown', e => {
   const m = DRIVE_KEYS[e.key.toLowerCase()];
   if (!m || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target && e.target.tagName === 'INPUT') return;
-  if ((spinning && vehicles.some(v => v.steer)) || fp || (RACE && RACE.on)) e.preventDefault();
+  if ((spinning && vehicles.some(v => v.steer)) || fp || (RACE && RACE.on) || (SURV && SURV.on)) e.preventDefault();
   ctrl[m[0]] = m[1];
 });
 addEventListener('keyup', e => { const m = DRIVE_KEYS[e.key.toLowerCase()]; if (m && ctrl[m[0]] === m[1]) ctrl[m[0]] = 0; });
@@ -5824,6 +5826,46 @@ const MODELS = [
     for (let z = 20; z <= 176; z += 12) { A('nature:소나무', 2, 1, z, 0, (z / 12) % 4 ? 3 : 10); A('nature:소나무', 178, 1, z, 0, (z / 12) % 3 ? 3 : 6); }
     for (const x of [6, 40, 140, 170]) A('nature:소나무', x, 1, 7, 0, 3);
   }},
+  {id: 'fsurv', fig: true, name: '서바이벌 게임장', lv: '보통', board: 128, desc: '112×112 페인트볼 서바이벌 경기장. 남쪽 🔵 파랑 진지와 북쪽 🔴 빨강 진지(깃발·벙커·모래주머니)가 마주 보고, 가운데엔 계단으로 오르는 전망대, 양옆엔 컨테이너·나무 상자 더미·폐허 벽·타이어 더미·바리케이드가 엄폐물로 놓여 있어요. 놀이 상자의 「🔫 서바이벌」을 누르면 파랑 진지에서 1인칭으로 시작해 AI 팀과 페인트볼 팀전을 해요.', build(A) {
+    const G = 112;
+    // 둘레 울타리(2단, 넘을 수 없음) + 동서 출입구
+    for (let y = 0; y < 6; y += 3) for (const [z, r] of [[0, 1], [G - 1, 1]]) for (let x = 0; x < G; x += 8) A(BK(1, 8), x, y, z, r, 3);
+    for (let y = 0; y < 6; y += 3) for (const x of [0, G - 1]) for (let z = 1; z < G - 1;) { if (z >= 52 && z < 60) { z++; continue; } const L = z < 52 ? Math.min(4, 52 - z) : Math.min(4, G - 1 - z); A(BK(1, L === 3 ? 2 : L), x, y, z, 0, 3); z += L === 3 ? 2 : L; }
+    // 진지 (남 = 파랑 1, 북 = 빨강 0): 벙커(문·창), 모래주머니, 깃발
+    const base = (south) => {
+      const c = south ? 1 : 0, zb = south ? 6 : G - 16, door = south ? zb + 9 : zb;   // 벙커 12×10, 문은 가운데 쪽
+      for (let y = 0; y < 12; y += 3) wallLayer(A, 50, zb, 12, 10, y, y === 9 ? c : 12, (x, z) => (z === door && x >= 54 && x < 58) || (y === 6 && (x === 50 || x === 61) && (z === zb + 4 || z === zb + 5)), (y / 3) % 2 === 1);
+      fillRect(A, 50, zb, 12, 10, 12, 12, 'plate');
+      for (const x of [42, 70]) A('battle:깃발', x, 0, south ? 8 : G - 9, south ? 0 : 2, c);
+      for (const x of [36, 44, 64, 72]) A('battle:모래주머니', x, 0, south ? 20 : G - 21, 1, 9), A('battle:모래주머니', x, 3, south ? 20 : G - 21, 1, 9);
+      A('battle:천막', 22, 0, south ? 6 : G - 12, south ? 0 : 2, south ? 1 : 0); A('battle:천막', 84, 0, south ? 6 : G - 12, south ? 0 : 2, south ? 1 : 0);
+    };
+    base(true); base(false);
+    // 가운데 전망대: 12×12 판(윗면 18) + 기둥 넷 + 남·북 계단 + 낮은 난간
+    const T0 = 50;
+    for (const [x, z] of [[T0, T0], [T0 + 10, T0], [T0, T0 + 10], [T0 + 10, T0 + 10]]) { for (let y = 0; y < 15; y += 3) A(BK(2, 2), x, y, z, 0, 11); A(PK(2, 2), x, 15, z, 0, 11); A(PK(2, 2), x, 16, z, 0, 11); }
+    fillRect(A, T0, T0, 12, 12, 17, 11, 'plate');
+    for (let x = T0; x < T0 + 12; x += 4) { if (x !== T0 + 4) { A(BK(1, 4), x, 18, T0, 1, 9); A(BK(1, 4), x, 18, T0 + 11, 1, 9); } }
+    for (let z = T0 + 1; z < T0 + 11; z += 2) { A(BK(1, 2), T0, 18, z, 0, 9); A(BK(1, 2), T0 + 11, 18, z, 0, 9); }
+    // 계단: 남쪽 입구(x54~57) → 땅에서 9 → 받침 위 다시 9 → 판(18)
+    A('slope:계단 4×3', T0 + 4, 0, T0 - 9, 0, 12);
+    for (let y = 0; y < 9; y += 3) { A(BK(2, 4), T0 + 4, y, T0 - 6, 1, 12); A(BK(1, 4), T0 + 4, y, T0 - 4, 1, 12); }
+    A('slope:계단 4×3', T0 + 4, 9, T0 - 3, 0, 12);
+    // 컨테이너(속이 빈 6단 상자, 지붕 판): 동서 양쪽
+    const box = (x, z, w, d, c) => { for (let y = 0; y < 18; y += 3) wallLayer(A, x, z, w, d, y, c, () => false, (y / 3) % 2 === 1); fillRect(A, x, z, w, d, 18, c, 'plate'); };
+    box(16, 34, 6, 14, 6); box(90, 64, 6, 14, 6); box(22, 70, 14, 6, 10); box(76, 36, 14, 6, 10);
+    // 나무 상자 더미 (2×2 갈색, 1~3단)
+    for (const [x, z, h] of [[34, 30, 2], [36, 30, 1], [34, 32, 1], [76, 80, 2], [74, 80, 1], [76, 78, 1], [30, 56, 3], [80, 54, 3], [44, 44, 1], [66, 66, 1], [12, 88, 2], [98, 22, 2], [60, 30, 2], [50, 80, 2], [40, 88, 1], [70, 22, 1]])
+      for (let y = 0; y < h * 3; y += 3) A(BK(2, 2), x, y, z, 0, 11);
+    // 폐허 벽 (창 뚫린 1×8 벽)
+    for (const [x, z] of [[8, 60], [96, 46]]) for (let y = 0; y < 15; y += 3) { if (y === 6) { A(BK(1, 2), x, y, z, 0, 9); A(BK(1, 2), x, y, z + 6, 0, 9); } else { A(BK(1, 4), x, y, z, 0, 9); A(BK(1, 4), x, y, z + 4, 0, 9); } }
+    for (const [x, z] of [[24, 22], [82, 88]]) for (let y = 0; y < 12; y += 3) A(BK(1, 8), x, y, z, 1, 12);
+    // 타이어 더미·바리케이드
+    for (const [x, z] of [[46, 34], [64, 76], [14, 20], [96, 92], [36, 64], [74, 46]]) for (let y = 0; y < 9; y += 3) A('round:원형 2×2', x, y, z, 0, 5);
+    for (const [x, z] of [[26, 46], [84, 64], [58, 42], [50, 70], [8, 36], [100, 74]]) A('battle:바리케이드', x, 0, z, 1, 12);
+    // 나무
+    for (const [x, z] of [[6, 6], [104, 6], [6, 104], [104, 104], [14, 74], [96, 36], [40, 14], [70, 96], [28, 96], [84, 14]]) A('nature:소나무', x, 0, z, 0, 3);
+  }},
   {id: 'frace', fig: true, name: '자동차 경주장', lv: '어려움', board: 192, desc: '192×192 판에 펼쳐진 자동차 경주 서킷(한 바퀴 약 730칸, 폭 12). 긴 출발 직선, 넓게 도는 1번 코너, S자, 안쪽으로 감기는 복합 코너, 머리핀, 시케인이 이어져요. 굽은 곳엔 빨강·흰 연석, 둘레엔 방호벽, 출발선 위엔 신호등이 있는 출발대가 있어요. 놀이 상자의 「🏎 자동차 경주」를 누르면 출발 칸에 선 경주용 자동차 여섯 대가 신호등이 꺼지면 출발해 3바퀴를 겨뤄요(W/S 가속·브레이크, A/D 핸들, C 시점). 직선 옆엔 지붕 있는 관람석과 응원하는 관중, 안쪽엔 정비고와 관제탑이 있어요.', build(A) {
     const C = raceTrack(), S = C.P.map(p => [p.x + TRK.SX, p.z + TRK.SZ]);
     const dist = (x, z) => { let m = 1e9; for (const p of S) { const d = (p[0] - x) ** 2 + (p[1] - z) ** 2; if (d < m) m = d; } return Math.sqrt(m); };
@@ -7149,6 +7191,8 @@ const MISSIONS = [
   ['race', '🏁', '레이서', '경주 완주하기'],
   ['gp', '🏎', '그랑프리', '자동차 경주 3바퀴 완주하기'],
   ['gpwin', '🏆', '챔피언', '자동차 경주에서 1등 하기'],
+  ['surv', '🎨', '페인트볼 용사', '서바이벌 게임에서 이기기'],
+  ['survace', '🎯', '명사수', '서바이벌 한 판에 혼자 4명 아웃시키기'],
   ['quake', '💥', '지진 박사', '지진으로 블럭 100개 무너뜨리기', () => [Math.min(100, badgeData.n.quake || 0), 100]],
   ['cannon', '💣', '명포수', '대포알 10번 쏘기', () => [Math.min(10, badgeData.n.cannon || 0), 10]],
   ['lift', '🛗', '엘리베이터', '1인칭으로 엘리베이터 타고 올라가기'],
@@ -8291,6 +8335,7 @@ function raceStart() {
   if (!tb) { toast('🏎 놀이 분류의 「경주 트랙」을 놓거나 예시 「자동차 경주장」을 불러오세요'); return; }
   closePlay(); if (fp) exitFP(); if (typeof game !== 'undefined' && game) stopGame(true); if (spinning) toggleSpin();
   if (RACE.on) raceStop(true);
+  if (SURV.on) survStop(true);
   raceUI();
   const C = raceTrack(), N = C.N, rot = -tb.r * Math.PI / 2;
   const R = RACE = {on: true, tb, C, y0: tb.y * PH + 0.22, WP: [], WT: [], WN: [], cars: [], t: 0, phase: 'count', cam: RACE.cam || 0, fin: 0, hidden: [], lamps: [], go: 0, endT: 0,
@@ -8488,6 +8533,454 @@ function raceCamera(dt, snap) {
   controls.target.set(c.x, R.y0, c.z);
 }
 
+// ==== 서바이벌 게임 (v54): 놀이 상자 '🔫 서바이벌' → 1인칭 페인트볼 팀전
+//  🔵 우리 팀(나 + AI) vs 🔴 상대 팀(AI). 페인트탄 3발 맞으면 아웃. 상대 팀을 모두 아웃시키면 승리
+//  PC: 클릭하면 마우스로 둘러보기(포인터 잠금), 누르고 있으면 연사, WASD 이동, 스페이스 점프, R 재장전, Esc 그만
+//  휴대폰: 왼쪽 버튼으로 이동, 화면을 끌어 조준, 오른쪽 🔴 발사 · 🔄 재장전
+var SURV = {on: false};
+const SVC = {HP: 100, DMG: 34, MAG: 20, RELOAD: 1.7, RATE: 0.16, BALL: 90, RANGE: 70,
+  PAINT: ['#2fa4ff', '#ff4b2b'], FIG: [1, 0], NAMES: [['독수리', '매', '여우', '곰', '늑대'], ['번개', '천둥', '바위', '태풍', '불곰', '호랑이']],
+  DIFF: {easy: {spread: 1.6, react: 1.6, rate: 1.4, name: '쉬움'}, normal: {spread: 1, react: 1, rate: 1, name: '보통'}, hard: {spread: 0.68, react: 0.65, rate: 0.8, name: '어려움'}}};
+const svSplatTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.beginPath(); for (let i = 0; i <= 18; i++) { const a = i / 18 * Math.PI * 2, r = 17 + ((i * 7) % 5) * 1.6; g.lineTo(32 + Math.cos(a) * r, 32 + Math.sin(a) * r); } g.fill();
+  for (let i = 0; i < 9; i++) { const a = i * 2.39, r = 22 + (i % 3) * 3.5; g.beginPath(); g.arc(32 + Math.cos(a) * r, 32 + Math.sin(a) * r, 2.2 + (i % 3), 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); return t;
+})();
+const svBallGeo = new THREE.SphereGeometry(0.12, 8, 6), svSplatGeo = new THREE.PlaneGeometry(1, 1);
+const svBallMat = SVC.PAINT.map(c => new THREE.MeshBasicMaterial({color: c}));
+const svSplatMat = SVC.PAINT.map(c => new THREE.MeshBasicMaterial({color: c, map: svSplatTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4}));
+const _sv = new THREE.Vector3(), _sw = new THREE.Vector3();
+// ---- 길 찾기: walkNodes(걸어서 닿는 칸)를 이어 A*로
+function svNav() {
+  const W = walkNodes(), list = [], at = (x, z) => W.nodes.get((x - W.x0) * 4096 + (z - W.z0));
+  for (const arr of W.nodes.values()) for (const n of arr) if (n.reach) { n.i = list.length; list.push(n); }
+  for (const n of list) {
+    n.nb = [];
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const arr = at(n.x + dx, n.z + dz); if (!arr) continue; for (const m of arr) { if (!m.reach) continue; const up = m.s - n.s; if (up > (m.ramp || n.ramp ? 9 : 3) || up < -12) continue; n.nb.push(m.i); } }
+  }
+  for (const n of list) n.wide = n.nb.length >= 4;
+  for (const n of list) n.w2 = n.wide && n.nb.every(i => list[i].wide);
+  return {list, at};
+}
+function svNode(x, y, z) {
+  const N = SURV.nav;
+  for (let r = 0; r <= 4; r++) {
+    let best = null, bd = Infinity;
+    for (let dx = -r; dx <= r; dx++) for (let dz = -r; dz <= r; dz++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue;
+      const arr = N.at(Math.floor(x) + dx, Math.floor(z) + dz); if (!arr) continue;
+      for (const n of arr) if (n.reach) { const d = Math.abs(n.s * PH - y) * 2 + Math.hypot(dx, dz) + (n.w2 ? 0 : 0.5); if (d < bd) { bd = d; best = n; } }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+function svPath(a, b) {
+  const L = SURV.nav.list; if (!a || !b) return null; if (a === b) return [b];
+  const g = new Map([[a.i, 0]]), came = new Map(), heap = [[0, a.i]], h = n => Math.hypot(n.x - b.x, n.z - b.z);
+  const push = it => { heap.push(it); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  let n = 0;
+  while (heap.length && n++ < 30000) {
+    const [, ci] = pop(); if (ci === b.i) break;
+    const c = L[ci], gc = g.get(ci);
+    for (const j of c.nb) { const m = L[j], ng = gc + (m.w2 ? 1 : m.wide ? 2.5 : 6); if (ng < (g.has(j) ? g.get(j) : Infinity)) { g.set(j, ng); came.set(j, ci); push([ng + h(m), j]); } }
+  }
+  if (!came.has(b.i)) return null;
+  const out = []; for (let i = b.i; i !== a.i; i = came.get(i)) out.push(L[i]); return out.reverse();
+}
+// ---- 시야·탄: 블럭(피규어·동물 빼고)과 사람 상자
+function svBlock(o, dir, maxD) {
+  const p = new THREE.Vector3(), q = new THREE.Vector3().copy(o);
+  for (let s = 0.3; s < maxD; s += 0.3) {
+    p.copy(o).addScaledVector(dir, s);
+    const h = solidAt(p, null, null);
+    if (h) {
+      let n = new THREE.Vector3(0, 1, 0);
+      if (h !== 'ground') { const B = exactBox(h); if (q.x <= B[0]) n.set(-1, 0, 0); else if (q.x >= B[1]) n.set(1, 0, 0); else if (q.z <= B[4]) n.set(0, 0, -1); else if (q.z >= B[5]) n.set(0, 0, 1); else if (q.y <= B[2]) n.set(0, -1, 0); }
+      return {d: s, o: h, n, p: p.clone().addScaledVector(dir, -0.04)};
+    }
+    q.copy(p);
+  }
+  return null;
+}
+const svBox = u => { const p = svPos(u); return [p.x - 0.62, p.x + 0.62, p.y, p.y + 4.6, p.z - 0.62, p.z + 0.62]; };
+function svRayBox(o, d, B) {
+  let t0 = 0, t1 = 1e9;
+  for (const [a, lo, hi] of [[0, B[0], B[1]], [1, B[2], B[3]], [2, B[4], B[5]]]) {
+    const oo = a === 0 ? o.x : a === 1 ? o.y : o.z, dd = a === 0 ? d.x : a === 1 ? d.y : d.z;
+    if (Math.abs(dd) < 1e-9) { if (oo < lo || oo > hi) return null; continue; }
+    let ta = (lo - oo) / dd, tb = (hi - oo) / dd; if (ta > tb) [ta, tb] = [tb, ta];
+    t0 = Math.max(t0, ta); t1 = Math.min(t1, tb); if (t0 > t1) return null;
+  }
+  return t0;
+}
+function svPos(u) { if (u.me) { const p = fpPos(); return p || new THREE.Vector3(u.x, u.feet, u.z); } return new THREE.Vector3(u.x, u.feet, u.z); }
+const svEye = u => u.me && fp ? camera.position.clone() : svPos(u).add(new THREE.Vector3(0, 3.7, 0));
+const svChest = u => svPos(u).add(new THREE.Vector3(0, 2.6, 0));
+function svSees(a, b) {
+  const o = svEye(a), t = svChest(b), d = t.clone().sub(o), L = d.length(); if (L > 60) return false; d.divideScalar(L);
+  if (!svBlock(o, d, L - 0.8)) return true;
+  const t2 = svPos(b).add(new THREE.Vector3(0, 4.1, 0)), d2 = t2.sub(o), L2 = d2.length(); d2.divideScalar(L2);   // 머리만 보여도
+  return !svBlock(o, d2, L2 - 0.5);
+}
+// 쏘기: 맞는 사람·블럭을 정하고 공이 날아간 뒤 결과를 냄
+function svShoot(u, o, dir) {
+  const S = SURV; let best = null, bd = SVC.RANGE;
+  const wall = svBlock(o, dir, SVC.RANGE); if (wall) bd = wall.d;
+  for (const v of S.units) { if (v === u || v.out || v.team === u.team) continue; const t = svRayBox(o, dir, svBox(v)); if (t !== null && t < bd) { bd = t; best = v; } }
+  const m = new THREE.Mesh(svBallGeo, svBallMat[u.team]); m.position.copy(o); scene.add(m);
+  S.balls.push({m, o: o.clone(), dir: dir.clone(), L: bd, s: 0, u, hit: best, wall: best ? null : wall});
+  const a = camAtt(o); if (gate('svpop' + (u.me ? 1 : 0), 40)) { noise(0.05, (u.me ? 0.14 : 0.1) * a, 1400); tone(u.me ? 260 : 220, 0.05, 'triangle', 0.05 * a, 140); }
+  u.shots = (u.shots || 0) + 1;
+}
+function svSplat(p, n, team, size) {
+  const S = SURV; if (S.splats.length > 180) { const q = S.splats.shift(); scene.remove(q); }
+  const m = new THREE.Mesh(svSplatGeo, svSplatMat[team]); m.position.copy(p).addScaledVector(n, 0.03); m.lookAt(_sv.copy(m.position).add(n)); m.rotateZ(Math.random() * 6.3); m.scale.setScalar(size); m.renderOrder = 5; scene.add(m); S.splats.push(m);
+}
+function svDrops(p, team, n) {
+  for (let k = 0; k < n; k++) { const m = new THREE.Mesh(svBallGeo, svBallMat[team]); m.scale.setScalar(0.5 + Math.random() * 0.5); m.position.copy(p); scene.add(m); SURV.drops.push({m, v: new THREE.Vector3(rnd(-1, 1), rnd(0.3, 1.4), rnd(-1, 1)).multiplyScalar(4), t: 0}); }
+}
+function svHit(v, by) {
+  const S = SURV; if (v.out) return;
+  v.hp -= SVC.DMG; by.hits = (by.hits || 0) + 1; v.hurtT = 0.35; v.lastBy = by;
+  const p = svChest(v); svDrops(p, by.team, 7);
+  if (!v.me && v.m) { if ((v.marks || 0) < 6) { const sm = new THREE.Mesh(svSplatGeo, svSplatMat[by.team]); v.m.updateMatrixWorld(true); const lp = v.m.worldToLocal(p.clone().add(new THREE.Vector3(rnd(-0.3, 0.3), rnd(-0.6, 0.8), rnd(-0.3, 0.3)))); const dl = v.m.worldToLocal(svEye(by)).sub(lp).setY(0).normalize(); sm.position.copy(lp).addScaledVector(dl, 0.45); sm.lookAt(sm.position.clone().add(dl)); sm.scale.setScalar(0.45); v.m.add(sm); v.marks = (v.marks || 0) + 1; } }
+  if (by.me) { S.hitT = 0.18; tone(1300, 0.05, 'square', 0.04); }
+  if (v.me) { S.hurtT = 0.5; const e = svEye(by), c = camera.position; S.hurtDir = Math.atan2(e.x - c.x, e.z - c.z); noise(0.12, 0.25, 500); tone(160, 0.15, 'sawtooth', 0.05, 90); }
+  else { if (gate('svthud', 50)) noise(0.07, 0.16 * camAtt(p), 600); v.alert = by; v.relocate = Math.random() < 0.55; }
+  if (v.hp <= 0) svOut(v, by);
+}
+function svOut(v, by) {
+  const S = SURV; v.out = true; v.outT = 0; by.kills = (by.kills || 0) + 1;
+  svFeed((by.me ? '<b>나</b>' : svTag(by)) + ' 🎯 ' + (v.me ? '<b>나</b>' : svTag(v)) + ' 아웃!');
+  if (PLAY.talk && v.m && Math.random() < 0.7) bubble(v.m, ['아웃!', '맞았다!', '으악, 페인트!', '다음엔 안 져!'][Math.floor(Math.random() * 4)], 2);
+  if (v.me) {
+    S.spec = true; S.specI = 0; S.trigger = false; if (document.pointerLockElement) document.exitPointerLock();
+    $('svBig').textContent = '아웃! 🎨'; setTimeout(() => { if (SURV.on && !SURV.done) $('svBig').textContent = ''; }, 1600);
+    if (fp) { const keep = S.tempFig; exitFP(); if (keep) keep.mesh && (keep.mesh.visible = false); }
+    controls.enabled = false;
+  }
+  if (by.me && by.kills === 4) earn('survace');
+  svCheckEnd();
+}
+const svTag = u => `<i style="color:${SVC.PAINT[u.team]}">${u.team ? '🔴' : '🔵'}</i>${u.name}`;
+function svFeed(html) { const f = $('svFeed'), d = document.createElement('div'); d.innerHTML = html; f.prepend(d); while (f.children.length > 5) f.lastChild.remove(); setTimeout(() => d.remove(), 6000); }
+function svCheckEnd() {
+  const S = SURV; if (S.done) return;
+  const alive = t => S.units.filter(u => u.team === t && !u.out).length;
+  if (alive(1) === 0) svEnd(true); else if (alive(0) === 0) svEnd(false);
+}
+function svEnd(win) {
+  const S = SURV; S.done = true; S.endT = S.t; S.win = win; S.trigger = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+  $('svBig').textContent = win ? '🏆 승리!' : '패배…';
+  if (win) { chime([523, 659, 784, 1047], 0.13, 'square', 0.05); earn('surv'); } else tone(220, 0.6, 'triangle', 0.06, 110);
+  setTimeout(() => { if (SURV === S && S.on) svResult(); }, 2500);
+}
+function svResult() {
+  const S = SURV, me = S.me;
+  const rows = S.units.slice().sort((a, b) => a.team - b.team || (b.kills || 0) - (a.kills || 0)).map(u => `<tr class="${u.me ? 'me' : ''}"><td>${u.me ? '🔵 <b>나</b>' : svTag(u)}</td><td>${u.kills || 0}</td><td>${u.hits || 0}/${u.shots || 0}</td><td>${u.out ? '아웃' : '❤ ' + Math.max(0, Math.round(u.hp))}</td></tr>`).join('');
+  const r = $('svPanel');
+  r.innerHTML = `<h3>${S.win ? '🏆 우리 팀 승리!' : '😵 상대 팀 승리'}</h3><p class="sub">${fmtRT(S.endT - S.t0)} · 내가 맞힌 상대 ${me.kills || 0}명 · 명중 ${me.hits || 0}/${me.shots || 0}</p><table><tr><td>이름</td><td>아웃</td><td>명중</td><td>상태</td></tr>${rows}</table><div class="row"><button class="ghost" type="button" id="svQuit">끝내기</button><button type="button" id="svAgain">한 판 더</button></div>`;
+  r.hidden = false; $('svBig').textContent = '';
+  $('svQuit').onclick = () => survStop(); $('svAgain').onclick = () => { const o = S.opts; survStop(true); survBegin(o); };
+}
+// ---- 화면
+function svUI() {
+  if ($('svHud')) return;
+  const st = document.createElement('style');
+  st.textContent = `#svHud{position:fixed;inset:0;pointer-events:none;z-index:7;color:#fff;font-family:inherit}
+#svHud .svtop{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);display:flex;gap:6px}
+#svHud .svtop span,#svHp,#svAmmo{background:rgba(16,20,26,.78);border-radius:10px;padding:6px 12px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+#svHp{position:absolute;left:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;align-items:center;gap:8px}
+#svHp .bar{width:120px;height:10px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden}#svHp .bar i{display:block;height:100%;background:#4cd964;transition:width .15s}
+#svAmmo{position:absolute;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 18px)}
+#svFeed{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 60px);display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:13px}
+#svFeed div{background:rgba(16,20,26,.7);border-radius:8px;padding:4px 10px}
+#svX{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%)}
+#svX:before,#svX:after{content:'';position:absolute;background:#fff;box-shadow:0 0 2px #000}
+#svX:before{left:12px;top:0;width:2px;height:26px}#svX:after{top:12px;left:0;height:2px;width:26px}
+#svX.hit{transform:translate(-50%,-50%) rotate(45deg)}#svX.hit:before,#svX.hit:after{background:#ff3b30}
+#svHurt{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 45%,rgba(255,40,30,.55) 100%)}
+#svDir{position:absolute;left:50%;top:50%;width:150px;height:150px;margin:-75px 0 0 -75px;opacity:0}
+#svDir:before{content:'';position:absolute;left:50%;top:-6px;margin-left:-12px;border:12px solid transparent;border-bottom:18px solid #ff3b30}
+#svBig{position:absolute;left:50%;top:32%;transform:translate(-50%,-50%);font-size:min(13vw,84px);font-weight:900;text-shadow:0 4px 14px rgba(0,0,0,.55);white-space:nowrap}
+#svHud .btns{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;gap:6px;pointer-events:auto}
+#svHud button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:8px 12px;background:rgba(255,255,255,.92);color:#1b2a34;cursor:pointer}
+#svFire,#svRel{position:absolute;display:none;pointer-events:auto;border-radius:50%!important;touch-action:none;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#svFire{right:24px;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);width:92px;height:92px;background:#e8412c!important;color:#fff!important;font-size:30px!important}
+#svFire.on{filter:brightness(.8)}#svRel{right:40px;bottom:calc(env(safe-area-inset-bottom,0px) + 176px);width:58px;height:58px;font-size:22px!important}
+body.svtouch #svFire,body.svtouch #svRel{display:block}
+body.svtouch #svAmmo{right:16px;bottom:auto;top:calc(env(safe-area-inset-top,0px) + 12px)}
+body.surv.svtouch .drivepad button{width:52px;height:52px}body.surv.svtouch .drivepad .jump{width:56px;height:56px}
+@media (max-height:520px){#svRel{right:128px;bottom:calc(env(safe-area-inset-bottom,0px) + 86px)}}
+#svPanel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.97);color:#1b2a34;border-radius:16px;padding:18px 20px;width:min(380px,90vw);max-height:86vh;overflow:auto;pointer-events:auto;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+#svPanel h3{margin:0 0 6px;font-size:20px}#svPanel .sub{margin:0 0 10px;color:#5b6670;font-size:14px}
+#svPanel table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:14px}#svPanel td{padding:5px 6px;border-top:1px solid #e6e8ea}#svPanel tr.me td{background:#e3f2ff}
+#svPanel .row{display:flex;gap:8px;margin-top:14px;justify-content:flex-end;flex-wrap:wrap}
+#svPanel button{background:#1b2a34;color:#fff}#svPanel button.ghost{background:#e9ecef;color:#1b2a34}
+#svPanel .seg{display:flex;gap:6px;margin:6px 0 10px}#svPanel .seg button{flex:1;background:#e9ecef;color:#1b2a34}#svPanel .seg button[aria-pressed=true]{background:#1b2a34;color:#fff}
+#svPanel ul{margin:6px 0 4px;padding-left:18px;font-size:14px;line-height:1.55;color:#33404a}
+body.surv header.top,body.surv .tray,body.surv #hud,body.surv .fpbar,body.surv:not(.svtouch) .drivepad{display:none!important}
+body.surv.svtouch .drivepad{left:max(16px,env(safe-area-inset-left,0px));right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 56px)!important}
+@media (max-width:640px){#svHp .bar{width:80px}#svFeed{font-size:12px;top:calc(env(safe-area-inset-top,0px) + 56px)}#svHud .btns button span{display:none}}`;
+  document.head.appendChild(st);
+  const d = document.createElement('div'); d.id = 'svHud'; d.hidden = true;
+  d.innerHTML = `<div class="svtop"><span id="svTeams"></span><span id="svTime"></span></div><div class="btns"><button id="svExit" type="button">✕<span> 그만 (Esc)</span></button></div>
+<div id="svFeed"></div><div id="svX"></div><div id="svHurt"></div><div id="svDir"></div><div id="svBig"></div>
+<div id="svHp">❤<div class="bar"><i id="svHpBar"></i></div><span id="svHpN"></span></div><div id="svAmmo"></div>
+<button id="svRel" type="button" aria-label="재장전">🔄</button><button id="svFire" type="button" aria-label="발사">🎯</button><div id="svPanel" hidden></div>`;
+  document.body.appendChild(d);
+  $('svExit').addEventListener('click', () => survStop());
+  const fire = $('svFire');
+  fire.addEventListener('pointerdown', e => { e.preventDefault(); try { fire.setPointerCapture(e.pointerId); } catch (er) {} if (SURV.on) SURV.trigger = true; fire.classList.add('on'); });
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) fire.addEventListener(ev, () => { SURV.trigger = false; fire.classList.remove('on'); });
+  $('svRel').addEventListener('pointerdown', e => { e.preventDefault(); svReload(); });
+  // PC: 누르면 쏘기 + 마우스 잠금(되면 마우스만 움직여 조준)
+  dom.addEventListener('pointerdown', e => {
+    if (!SURV.on || SURV.done || SURV.spec || !$('svPanel').hidden || e.pointerType !== 'mouse' || e.button !== 0) return;
+    SURV.trigger = true;
+    if (!document.pointerLockElement && dom.requestPointerLock) { try { const p = dom.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (er) {} }
+  });
+  addEventListener('pointerup', e => { if (e.pointerType === 'mouse' && SURV.on) SURV.trigger = false; });
+  addEventListener('mousemove', e => { if (SURV.on && fp && document.pointerLockElement === dom) { fp.yaw -= e.movementX * 0.0024; fp.pitch = Math.max(-1.2, Math.min(1.0, fp.pitch - e.movementY * 0.0024)); } });
+  // 1인칭 총
+  const g = new THREE.Group(), dk = new THREE.MeshStandardMaterial({color: '#2b3036', roughness: 0.5}), bl = new THREE.MeshStandardMaterial({color: '#59616a', metalness: 0.5, roughness: 0.4});
+  const add = (geo, m, x, y, z) => { const q = new THREE.Mesh(geo, m); q.position.set(x, y, z); g.add(q); return q; };
+  add(new THREE.BoxGeometry(0.11, 0.15, 0.42), dk, 0, 0, 0);
+  const br = add(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 10), bl, 0, 0.03, -0.42); br.rotation.x = Math.PI / 2;
+  add(new THREE.BoxGeometry(0.08, 0.2, 0.09), dk, 0, -0.15, 0.08).rotation.x = -0.25;
+  g.userData.hopper = add(new THREE.SphereGeometry(0.11, 14, 10), new THREE.MeshStandardMaterial({color: SVC.PAINT[0], transparent: true, opacity: 0.85, roughness: 0.2}), 0, 0.16, 0.02);
+  add(new THREE.BoxGeometry(0.06, 0.05, 0.24), dk, 0, 0.1, 0.22);
+  g.renderOrder = 9; g.traverse(o => { if (o.material) { o.material.depthTest = true; } });
+  SURV.gunTpl = g;
+}
+function survOpen(opts) {
+  svUI(); closePlay();
+  if (RACE.on) raceStop(true); if (game) stopGame(true);
+  const o = opts || {diff: 'normal', n: 4};
+  const p = $('svPanel'); $('svHud').hidden = false; document.body.classList.add('surv');
+  const draw = () => {
+    p.innerHTML = `<h3>🔫 서바이벌 게임</h3><p class="sub">페인트볼 팀전 · 🔵 우리 팀(나 + AI) vs 🔴 상대 팀</p>
+<ul><li>페인트탄을 3발 맞으면 아웃이에요. 상대 팀을 모두 아웃시키면 승리!</li><li>벽·상자 뒤에 숨으면 탄이 막혀요. 탄창 ${SVC.MAG}발, 다 쓰면 재장전</li>
+<li>${matchMedia('(pointer: coarse)').matches ? '왼쪽 버튼으로 이동, 화면을 끌어 조준, 🎯 발사 · 🔄 재장전' : '클릭하면 마우스로 조준(잠금), 누르고 있으면 연사 · WASD 이동 · 스페이스 점프 · R 재장전 · G 달리기 · Esc 그만'}</li></ul>
+<div><b>인원</b></div><div class="seg" id="svN">${[3, 4, 5].map(n => `<button type="button" data-n="${n}" aria-pressed="${o.n === n}">${n} 대 ${n}</button>`).join('')}</div>
+<div><b>난이도</b></div><div class="seg" id="svD">${Object.keys(SVC.DIFF).map(k => `<button type="button" data-d="${k}" aria-pressed="${o.diff === k}">${SVC.DIFF[k].name}</button>`).join('')}</div>
+<div class="row"><button class="ghost" type="button" id="svCancel">닫기</button><button type="button" id="svGo">시작</button></div>`;
+    p.querySelectorAll('#svN button').forEach(b => b.onclick = () => { o.n = +b.dataset.n; draw(); });
+    p.querySelectorAll('#svD button').forEach(b => b.onclick = () => { o.diff = b.dataset.d; draw(); });
+    $('svCancel').onclick = () => { p.hidden = true; $('svHud').hidden = true; document.body.classList.remove('surv'); };
+    $('svGo').onclick = () => survBegin(o);
+  };
+  draw(); p.hidden = false;
+  ['svTeams', 'svTime', 'svAmmo', 'svHpN'].forEach(id => $(id).textContent = ''); $('svHpBar').style.width = '100%'; $('svBig').textContent = '';
+}
+// 두 진지: 파랑·빨강 깃발이 있으면 그 자리, 없으면 걸어서 닿는 바닥에서 가장 먼 두 곳
+function svBases(nav) {
+  const L = nav.list.filter(n => n.w2 && !n.covered); if (L.length < 20) return null;
+  const flag = c => { const f = bricks.filter(b => TYPES[b.t].kind === 'flag' && b.c === c && !b.sn); if (!f.length) return null; return {x: f.reduce((s, b) => s + b.x, 0) / f.length, z: f.reduce((s, b) => s + b.z, 0) / f.length}; };
+  let A = flag(1), B = flag(0);
+  if (A && B) { const dx = B.x - A.x, dz = B.z - A.z, d = Math.hypot(dx, dz) || 1, k = Math.min(10, d * 0.12); A = {x: A.x + dx / d * k, z: A.z + dz / d * k}; B = {x: B.x - dx / d * k, z: B.z - dz / d * k}; }   // 깃발에서 조금 앞으로 나온 곳
+  else {
+    const far = p => L.reduce((m, n) => { const d = (n.x - p.x) ** 2 + (n.z - p.z) ** 2; return d > m[0] ? [d, n] : m; }, [-1, null])[1];
+    const s = L[Math.floor(Math.random() * L.length)]; B = far(s); A = far(B);
+  }
+  return [A, B];
+}
+function svSpawns(nav, base, n, used) {
+  const L = nav.list.filter(m => m.w2 && !used.has(m.i)).map(m => [m, Math.hypot(m.x - base.x, m.z - base.z)]).sort((a, b) => a[1] - b[1]);
+  const out = [];
+  for (const [m] of L) { if (out.length >= n) break; if (out.some(q => Math.hypot(q.x - m.x, q.z - m.z) < 3.6)) continue; out.push(m); used.add(m.i); }
+  return out;
+}
+function survBegin(o) {
+  const S0 = SURV; $('svPanel').hidden = true;
+  if (fp) exitFP(); if (spinning) toggleSpin();
+  const nav = svNav(), bases = svBases(nav);
+  if (!bases) { toast('🔫 걸어 다닐 바닥이 넓은 곳에서 해 보세요 · 예시 「서바이벌 게임장」을 불러오면 바로 할 수 있어요'); survStop(); return; }
+  const S = SURV = {on: true, opts: o, nav, bases, units: [], balls: [], splats: [], drops: [], t: 0, t0: 0, phase: 'count', diff: SVC.DIFF[o.diff] || SVC.DIFF.normal, gunTpl: S0.gunTpl, trigger: false, fireT: 0, hitT: 0, hurtT: 0};
+  const used = new Set(), sp = [svSpawns(nav, bases[0], o.n, used), svSpawns(nav, bases[1], o.n, used)];
+  const ft = TYPES[byName('군인', 'figure')];
+  for (let team = 0; team < 2; team++) sp[team].forEach((m, i) => {
+    const me = team === 0 && i === 0;
+    const u = {team, me, name: me ? '나' : SVC.NAMES[team][(i - (team ? 0 : 1) + 10) % SVC.NAMES[team].length], hp: SVC.HP, x: m.x + 0.5, z: m.z + 0.5, feet: m.s * PH, th: 0, path: null, ammo: SVC.MAG, fireT: 1 + Math.random(), scanT: Math.random() * 0.3, waitT: 1 + Math.random() * 2, ph: Math.random() * 10, node: m};
+    const e = bases[1 - team]; u.th = Math.atan2(e.x - u.x, e.z - u.z);
+    if (!me) { u.m = new THREE.Mesh(geoFor(ft, SVC.FIG[team], {ri: 'gun', l: 75, r: 90}), vcMat()); u.m.castShadow = true; scene.add(u.m); svPlace(u, 0); }
+    S.units.push(u); if (me) S.me = u;
+  });
+  // 나: 내 진지에 파란 군인을 세우고 1인칭으로
+  const mu = S.me, face = Math.round((((-mu.th / (Math.PI / 2)) % 4) + 4) % 4) % 4;
+  const fig = normalize({t: ft.id, r: face, x: Math.floor(mu.x) - 1, y: Math.round(mu.feet / PH), z: Math.floor(mu.z), c: SVC.FIG[0], pose: {ri: 'gun', l: 75, r: 90}});
+  addBrick(fig, false); S.tempFig = fig; enterFP(fig);
+  if (!fp || !fp.walk) { toast('1인칭으로 들어갈 수 없는 자리예요'); survStop(); return; }
+  S.gun = S.gunTpl.clone(); S.gun.scale.setScalar(0.62); if (!camera.parent) { scene.add(camera); S.camAdded = true; } camera.add(S.gun);
+  document.body.classList.toggle('svtouch', matchMedia('(pointer: coarse)').matches);
+  $('svHud').hidden = false; document.body.classList.add('surv'); updatePad();
+  S.cd = 3.2; $('svBig').textContent = '3';
+  toast('🔫 서바이벌 시작! ' + o.n + ' 대 ' + o.n + ' · ' + S.diff.name);
+}
+function survStop(quiet) {
+  const S = SURV; if (!S.on) { return; }
+  for (const u of S.units) if (u.m) scene.remove(u.m);
+  for (const b of S.balls) scene.remove(b.m); for (const m of S.splats) scene.remove(m); for (const d of S.drops) scene.remove(d.m);
+  if (S.gun) camera.remove(S.gun); if (S.camAdded) scene.remove(camera);
+  if (document.pointerLockElement) document.exitPointerLock();
+  if (fp) exitFP();
+  if (S.tempFig && S.tempFig._ix) { removeBrick(S.tempFig); changed(); }
+  if (S.spec) { controls.enabled = true; }
+  const saved = S.camSaved;
+  SURV = {on: false, gunTpl: S.gunTpl};
+  document.body.classList.remove('surv', 'svtouch'); if ($('svHud')) { $('svHud').hidden = true; $('svPanel').hidden = true; }
+  ctrl.throttle = ctrl.steer = ctrl.jump = 0; controls.enabled = true; updatePad();
+}
+function svReload() { const S = SURV; if (!S.on || !S.me || S.me.out || S.me.reloadT > 0 || S.me.ammo === SVC.MAG) return; S.me.reloadT = SVC.RELOAD; tone(500, 0.08, 'square', 0.04); setTimeout(() => tone(700, 0.06, 'square', 0.04), 900); }
+function svPlace(u, dt) {
+  const m = u.m; if (!m) return;
+  const moving = u.moving, aim = u.aimT > 0, ph = Math.floor((SURV.t + u.ph) * 7) % 2;
+  const pose = u.out ? {legs: 'sit', l: 170, r: 170, ri: '', li: ''} : moving ? {ri: 'gun', l: 60, r: 75, legs: ph ? 'runB' : 'run'} : u.crouch ? {ri: 'gun', l: 75, r: 90 + (u.recoil > 0 ? 15 : 0), legs: 'kneel'} : {ri: 'gun', l: 75, r: 90 + (u.recoil > 0 ? 15 : 0)};
+  const k = JSON.stringify(pose); if (k !== u.poseK) { u.poseK = k; m.geometry = geoFor(TYPES[byName('군인', 'figure')], SVC.FIG[u.team], pose); }
+  m.position.set(u.x, u.feet + (u.out ? 0 : 0), u.z); m.rotation.set(0, u.th, 0);
+  if (u.out) { const k2 = Math.min(1, u.outT / 0.4); m.position.y = u.feet - 1.0 * k2; }   // 앉아서 손 들기
+}
+function svStepUnit(u, dt) {
+  const S = SURV, D = S.diff;
+  if (u.out) { u.outT += dt; if (u.m) { svPlace(u, dt); if (u.outT > 3.5) { u.m.visible = Math.floor(u.outT * 8) % 2 === 0; if (u.outT > 5) { scene.remove(u.m); u.m = null; } } } return; }
+  if (u.recoil > 0) u.recoil -= dt; if (u.hurtT > 0) u.hurtT -= dt;
+  if (u.reloadT > 0) { u.reloadT -= dt; if (u.reloadT <= 0) u.ammo = SVC.MAG; }
+  // 적 찾기
+  u.scanT -= dt;
+  if (u.scanT <= 0) {
+    u.scanT = 0.28 + Math.random() * 0.12;
+    let best = null, bd = 60;
+    const pp = svPos(u);
+    for (const v of S.units) if (v.team !== u.team && !v.out) { const d = svPos(v).distanceTo(pp); if (d < bd && svSees(u, v)) { bd = d; best = v; } }
+    if (best && best !== u.tgt) u.react = (0.45 + Math.random() * 0.5) * D.react;
+    if (best) { u.tgt = best; u.lastSeen = svPos(best); u.seenT = S.t; }
+    else if (u.tgt) { u.tgt = null; u.path = null; u.hunt = u.lastSeen; }
+  }
+  // 맞으면 일부는 다른 엄폐물로
+  if (u.relocate && !u.reloc) {
+    u.relocate = false; const a = u.alert ? svPos(u.alert) : null, here = svPos(u);
+    const L = S.nav.list, cand = [];
+    for (let k = 0; k < 60; k++) { const n = L[Math.floor(Math.random() * L.length)], d = Math.hypot(n.x - here.x, n.z - here.z); if (d > 5 && d < 14 && n.w2 && (!a || Math.hypot(n.x - a.x, n.z - a.z) > Math.hypot(here.x - a.x, here.z - a.z))) cand.push(n); }
+    if (cand.length) { u.path = svPath(u.node, cand[0]); u.pi = 0; u.reloc = 2.5; }
+  }
+  if (u.reloc > 0) u.reloc -= dt;
+  let move = !!(u.path && u.pi < u.path.length);
+  const tgt = u.tgt;
+  if (tgt && !(u.reloc > 0)) {
+    move = false; u.path = null;
+    const tp = svPos(tgt), want = Math.atan2(tp.x - u.x, tp.z - u.z); let d = want - u.th; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    u.th += Math.max(-6 * dt, Math.min(6 * dt, d));
+    u.react -= dt; u.aimT = 1;
+    if (u.crouchT === undefined || (u.crouchT -= dt) <= 0) { u.crouch = Math.random() < 0.4; u.crouchT = 2 + Math.random() * 3; }
+    if (u.ammo <= 0 && !(u.reloadT > 0)) { u.reloadT = SVC.RELOAD * 1.1; }
+    u.fireT -= dt;
+    if (u.react <= 0 && Math.abs(d) < 0.25 && u.fireT <= 0 && u.ammo > 0 && !(u.reloadT > 0)) {
+      const burst = u.burst = (u.burst || 0) + 1; u.fireT = burst % 4 ? SVC.RATE * 1.4 * D.rate : (0.7 + Math.random() * 0.8) * D.rate;
+      u.m.updateMatrixWorld(true); const M = u.m.geometry.userData.muzzle;
+      const o = M ? new THREE.Vector3(M[0][0], M[0][1], M[0][2]).applyMatrix4(u.m.matrixWorld) : svEye(u);
+      const tc = svChest(tgt), dist = tc.distanceTo(o), mv = tgt.me ? (Math.abs(ctrl.throttle) + Math.abs(ctrl.steer) > 0 ? 1.35 : 1) : (tgt.moving ? 1.35 : 1);
+      const R = (0.7 + dist * 0.035) * D.spread * mv * (tgt.crouch ? 1.2 : 1), side = new THREE.Vector3(tc.z - o.z, 0, -(tc.x - o.x)).normalize();
+      tc.addScaledVector(side, rnd(-R, R)).add(new THREE.Vector3(0, rnd(-1.1, 1.1) * D.spread, 0));
+      svShoot(u, o, tc.sub(o).normalize()); u.ammo--; u.recoil = 0.1; fx('flash', o, 0.35);
+    }
+  } else {
+    u.aimT = 0; u.crouch = false;
+    if (!move) {
+      u.waitT -= dt;
+      if (u.waitT <= 0) {
+        // 다음 목표: 마지막으로 본 적 → 상대 진지 쪽 엄폐물
+        const L = S.nav.list, e = S.bases[1 - u.team], own = S.bases[u.team];
+        let goal = u.hunt ? svNode(u.hunt.x, u.hunt.y, u.hunt.z) : null; u.hunt = null;
+        if (!goal) { const here = svPos(u); let bs = -Infinity; for (let k = 0; k < 40; k++) { const n = L[Math.floor(Math.random() * L.length)]; if (!n.w2) continue; const dh = Math.hypot(n.x - here.x, n.z - here.z); if (dh < 6 || dh > 30) continue; const sc = -Math.hypot(n.x - e.x, n.z - e.z) * 0.6 + Math.hypot(n.x - own.x, n.z - own.z) * 0.2 + Math.random() * 14 + (n.covered ? 4 : 0); if (sc > bs) { bs = sc; goal = n; } } }
+        if (goal) { u.path = svPath(u.node, goal); u.pi = 0; }
+        u.waitT = 1.2 + Math.random() * 2.5;
+        if (!u.path) u.waitT = 0.5;
+      }
+    }
+  }
+  u.moving = false;
+  if (move) {
+    // 길 따라 (막힘 없이 곧게 갈 수 있는 앞 점까지 건너뜀)
+    while (u.pi < u.path.length - 1) { const a = u.path[u.pi], b = u.path[u.pi + 1]; if (Math.hypot(a.x + 0.5 - u.x, a.z + 0.5 - u.z) < 0.6 || (b.s === a.s && Math.hypot(b.x + 0.5 - u.x, b.z + 0.5 - u.z) < 1.2)) u.pi++; else break; }
+    const n = u.path[u.pi], tx = n.x + 0.5, tz = n.z + 0.5, dx = tx - u.x, dz = tz - u.z, dl = Math.hypot(dx, dz), sp = (u.reloc > 0 ? 4.6 : 3.4) * speedMul * dt;
+    if (dl < 0.08) { u.pi++; u.node = n; }
+    else { const s = Math.min(dl, sp); u.x += dx / dl * s; u.z += dz / dl * s; u.moving = true; const want = Math.atan2(dx, dz); let d = want - u.th; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; u.th += Math.max(-8 * dt, Math.min(8 * dt, d)); if (dl < 0.7) u.node = n; }
+    const ty = n.s * PH; u.feet += (ty - u.feet) * Math.min(1, dt * 10);
+    if (u.pi >= u.path.length) { u.path = null; u.waitT = 0.6 + Math.random() * 1.5; }
+  }
+  svPlace(u, dt);
+}
+function survStep(dt) {
+  const S = SURV;
+  if (!S.on) return;
+  if (!S.spec && !fp) { survStop(); return; }
+  S.t += dt;
+  if (S.phase === 'count') {
+    const prev = Math.ceil(S.cd); S.cd -= dt; const k = Math.ceil(S.cd);
+    if (k !== prev && k > 0) { $('svBig').textContent = String(k); tone(520, 0.12, 'square', 0.04); }
+    if (S.cd <= 0) { S.phase = 'go'; S.t0 = S.t; $('svBig').textContent = '시작!'; tone(880, 0.35, 'square', 0.05); setTimeout(() => { if (SURV === S && !S.done) $('svBig').textContent = ''; }, 900); }
+  }
+  const go = S.phase === 'go' && !S.done;
+  // 내 위치를 칸에 맞춰 둠(AI가 길 찾기·시야에 씀)
+  const me = S.me;
+  if (fp && !me.out) { const p = fpPos(); me.x = p.x; me.z = p.z; me.feet = p.y; me.node = svNode(p.x, p.y, p.z) || me.node; me.moving = Math.abs(ctrl.throttle) + Math.abs(ctrl.steer) > 0; }
+  if (!go) { ctrl.throttle = ctrl.steer = 0; }
+  // 내 총
+  if (me.reloadT > 0) { me.reloadT -= dt; if (me.reloadT <= 0) me.ammo = SVC.MAG; }
+  S.fireT -= dt;
+  if (go && fp && !me.out && S.trigger && S.fireT <= 0) {
+    if (me.ammo > 0 && !(me.reloadT > 0)) {
+      S.fireT = SVC.RATE; me.ammo--;
+      const dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+      const sp = 0.012 + (me.moving ? 0.012 : 0); dir.x += rnd(-sp, sp); dir.y += rnd(-sp, sp); dir.z += rnd(-sp, sp); dir.normalize();
+      const o = camera.position.clone().addScaledVector(dir, 0.6).add(new THREE.Vector3(0, -0.12, 0));
+      svShoot(me, o, dir); S.kick = 0.06; fp.pitch = Math.min(1.0, fp.pitch + 0.006);
+      if (S.gun) { const mz = new THREE.Vector3(0, 0.03, -0.7); S.gun.localToWorld(mz); fx('flash', mz, 0.25); }
+      if (me.ammo === 0) svReload();
+    } else if (me.ammo === 0 && !(me.reloadT > 0)) svReload();
+  }
+  if (S.gun) { S.kick = Math.max(0, (S.kick || 0) - dt * 0.5); const rl = me.reloadT > 0 ? Math.sin(Math.min(1, (SVC.RELOAD - me.reloadT) / SVC.RELOAD) * Math.PI) : 0; S.gun.position.set(0.24, -0.22 - rl * 0.18 + Math.sin((fp ? fp.bob : 0) * 4) * 0.008, -0.5 + S.kick); S.gun.rotation.set(rl * 0.9 + S.kick * 2, 0, rl * 0.3); S.gun.visible = !!fp && !me.out; }
+  // AI
+  if (go) { for (const u of S.units) if (!u.me) svStepUnit(u, dt); }
+  else if (S.done) { for (const u of S.units) if (!u.me && u.out && u.m) svStepUnit(u, dt); }
+  else { for (const u of S.units) if (u.m) svPlace(u, dt); }
+  // 페인트탄
+  for (let i = S.balls.length - 1; i >= 0; i--) {
+    const b = S.balls[i]; b.s += SVC.BALL * dt;
+    if (b.s >= b.L) {
+      const p = b.o.clone().addScaledVector(b.dir, b.L);
+      if (b.hit && !b.hit.out) svHit(b.hit, b.u);
+      else if (b.wall) { svSplat(b.wall.p, b.wall.n, b.u.team, rnd(0.55, 0.9)); svDrops(b.wall.p.clone().addScaledVector(b.wall.n, 0.1), b.u.team, 3); if (gate('svspl', 60)) noise(0.04, 0.08 * camAtt(p), 900); }
+      scene.remove(b.m); S.balls.splice(i, 1); continue;
+    }
+    b.m.position.copy(b.o).addScaledVector(b.dir, b.s);
+  }
+  for (let i = S.drops.length - 1; i >= 0; i--) { const d = S.drops[i]; d.t += dt; d.v.y -= 20 * dt; d.m.position.addScaledVector(d.v, dt); if (d.t > 0.6) { scene.remove(d.m); S.drops.splice(i, 1); } }
+  // 화면
+  const alive = t => S.units.filter(u => u.team === t && !u.out).length;
+  $('svTeams').innerHTML = `<i style="color:${SVC.PAINT[0]}">🔵</i> ${alive(0)} : ${alive(1)} <i style="color:${SVC.PAINT[1]}">🔴</i>`;
+  $('svTime').textContent = fmtRT(go || S.done ? (S.done ? S.endT : S.t) - S.t0 : 0);
+  $('svHpBar').style.width = Math.max(0, me.hp) + '%'; $('svHpBar').style.background = me.hp > 60 ? '#4cd964' : me.hp > 30 ? '#ffcc00' : '#ff3b30'; $('svHpN').textContent = Math.max(0, Math.round(me.hp));
+  $('svAmmo').textContent = me.out ? '관전 중' : me.reloadT > 0 ? '🔄 재장전…' : '🎯 ' + me.ammo + ' / ' + SVC.MAG;
+  S.hitT -= dt; $('svX').classList.toggle('hit', S.hitT > 0); $('svX').style.display = fp && !me.out ? '' : 'none';
+  S.hurtT -= dt; $('svHurt').style.opacity = Math.max(0, S.hurtT * 1.6);
+  if (S.hurtT > 0 && fp) { const c = new THREE.Vector3(); camera.getWorldDirection(c); const rel = S.hurtDir - Math.atan2(c.x, c.z); $('svDir').style.opacity = Math.min(1, S.hurtT * 2); $('svDir').style.transform = 'rotate(' + (-rel) + 'rad)'; } else $('svDir').style.opacity = 0;
+  if (S.spec) svSpecCam(dt);
+}
+// 아웃되면 살아 있는 우리 팀(없으면 아무나)을 어깨 뒤에서 봄
+function svSpecCam(dt) {
+  const S = SURV, L = S.units.filter(u => !u.out && !u.me && u.team === 0), P = L.length ? L : S.units.filter(u => !u.out && !u.me);
+  const u = P[0]; if (!u) return;
+  const f = [Math.sin(u.th), Math.cos(u.th)], k = 1 - Math.exp(-5 * dt);
+  _sv.set(u.x - f[0] * 5 + f[1] * 1.2, u.feet + 5.2, u.z - f[1] * 5 - f[0] * 1.2);
+  camera.position.lerp(_sv, k); camera.up.set(0, 1, 0); camera.lookAt(u.x + f[0] * 6, u.feet + 2.6, u.z + f[1] * 6);
+  controls.target.set(u.x, u.feet, u.z);
+}
+
 // ---- 놀이 상자 창
 function openPlay() { renderBadges(); syncPlayBtns(); $('playSheet').hidden = false; }
 function closePlay() { $('playSheet').hidden = true; }
@@ -8501,6 +8994,7 @@ $('playSheet').querySelectorAll('[data-act]').forEach(b => b.addEventListener('c
   else if (a === 'hide') { if (game && game.kind === a) stopGame(); else startHide(); }
   else if (a === 'race') { if (game && game.kind === a) stopGame(); else startRace(); }
   else if (a === 'gp') { raceStart(); return; }
+  else if (a === 'surv') { survOpen(); return; }
   else if (a === 'fireworks') { closePlay(); fireworksShow(); toast('🎆 불꽃놀이! · 밤에 보면 더 예뻐요'); }
   else if (a === 'quake') quake();
   else if (a === 'cannon') { const on = !PLAY.cannon; stopGame(true); PLAY.cannon = on; dom.style.cursor = on ? 'crosshair' : ''; if (on) { closePlay(); toast('💣 화면을 누르는 곳으로 대포알을 쏴요 · 끄려면 위의 [그만]'); } }
@@ -8528,7 +9022,9 @@ function frame(now) {
     if (k >= 1) { drops.splice(i, 1); if (d.b && d.b.mesh === d.mesh) setDyn(d.b, 'drop', false); }
   }
   if (RACE.on) raceStep(dt);
+  else if (SURV.on && SURV.spec) {}
   else if (fp) { fpStep(dt); if (fpBuild && lastPointer && !fpLook && !held && (++fpHoverTick % 6 === 0)) updateHover(...lastPointer); } else controls.update();
+  if (SURV.on) survStep(dt);
   playFrame(dt, now);
   rebuildBatches();
   if (bp) { const o = 0.32 + 0.16 * Math.sin(now / 260); for (const k in bpMats) bpMats[k].opacity = o; }
